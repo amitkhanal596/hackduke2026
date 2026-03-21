@@ -885,6 +885,95 @@ async def get_voice_news_script():
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error generating script: {str(e)}")
 
+
+# ============================================================================
+# Bull vs Bear Multi-Agent Analysis Endpoint
+# ============================================================================
+
+class AnalysisRequest(BaseModel):
+    include_news: bool = True
+    include_events: bool = True
+
+
+@app.post("/analyze/{ticker}")
+async def analyze_stock(ticker: str):
+    """
+    Multi-agent Bull vs Bear analysis endpoint
+
+    Uses secure, modular multi-agent system with:
+    - Security & Data Sanitization
+    - Bull Case Analyst
+    - Bear Case Analyst
+    - Probabilistic Scoring Engine
+
+    Returns structured, validated JSON output
+    """
+    try:
+        from app.ai_agents import run_multi_agent_analysis
+        import logging
+
+        logger = logging.getLogger(__name__)
+        logger.info(f"Starting multi-agent analysis for {ticker}")
+
+        ticker_upper = ticker.upper()
+
+        # Gather data for analysis
+        raw_data_parts = []
+
+        # Get price data
+        try:
+            price_response = await get_price_data(ticker_upper)
+            raw_data_parts.append(f"""
+Stock: {ticker_upper}
+Current Price: ${price_response.current_price}
+1 Day Change: ${price_response.change_1d} ({price_response.change_1d_percent}%)
+1 Week Change: ${price_response.change_1w} ({price_response.change_1w_percent}%)
+1 Month Change: ${price_response.change_1m} ({price_response.change_1m_percent}%)
+""")
+        except:
+            raw_data_parts.append(f"Stock: {ticker_upper}\nPrice data unavailable.")
+
+        # Get news
+        try:
+            news = news_service.get_stock_news(ticker_upper)
+            if news:
+                news_summary = "\n".join([
+                    f"- {item.get('title', 'No title')}: {item.get('summary', 'No summary')[:200]}"
+                    for item in news[:5]
+                ])
+                raw_data_parts.append(f"\nRecent News:\n{news_summary}")
+        except:
+            pass
+
+        # Get events
+        try:
+            past_events = await get_past_events(ticker_upper)
+            if past_events and past_events.get("events"):
+                events_summary = "\n".join([
+                    f"- {event.get('date', 'Unknown date')}: {event.get('description', 'No description')}"
+                    for event in past_events["events"][:3]
+                ])
+                raw_data_parts.append(f"\nRecent Events:\n{events_summary}")
+        except:
+            pass
+
+        # Combine all data
+        raw_data = "\n".join(raw_data_parts)
+
+        # Run multi-agent analysis
+        result = await run_multi_agent_analysis(raw_data)
+
+        # Add metadata
+        result["ticker"] = ticker_upper
+        result["analyzed_at"] = datetime.now().isoformat()
+
+        return result
+
+    except Exception as e:
+        logger.error(f"Error in multi-agent analysis for {ticker}: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error analyzing stock: {str(e)}")
+
+
 if __name__ == "__main__":
     import uvicorn
     import os 
