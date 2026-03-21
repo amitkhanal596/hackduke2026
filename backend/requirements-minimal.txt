@@ -1,0 +1,30 @@
+# Core FastAPI dependencies
+fastapi==0.111.0
+uvicorn[standard]==0.30.1
+pydantic==2.7.4
+
+# Database (SQLite only for Vercel)
+# Note: psycopg2-binary removed since we're using SQLite
+sqlalchemy==2.0.30
+
+# Environment variables
+python-dotenv==1.0.1
+
+# HTTP requests
+requests==2.32.3
+
+# Stock data (lightweight)
+yfinance==0.2.40
+
+# AI services
+google-generativeai==0.8.3
+elevenlabs==1.59.0
+
+# Text processing (lightweight alternative to scikit-learn)
+textblob==0.18.0.post0
+
+# Date handling
+python-dateutil==2.9.0.post0
+
+# Minimal data processing (much smaller than pandas/numpy)
+# Using only what's absolutely necessary
