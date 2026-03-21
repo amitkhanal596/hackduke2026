@@ -15,13 +15,11 @@ async function tryGemini(prompt: string, apiKey: string) {
     console.log("❌ Could not fetch models list");
   }
 
-  // Try different model configurations - using the newer Gemini 2.x models
+  // Try different model configurations - using newer Gemini models
   const tryConfigs = [
-    { version: 'v1beta', model: 'gemini-2.5-flash' },
     { version: 'v1beta', model: 'gemini-2.0-flash' },
-    { version: 'v1beta', model: 'gemini-2.5-pro' },
-    { version: 'v1', model: 'gemini-2.5-flash' },
-    { version: 'v1', model: 'gemini-2.0-flash' },
+    { version: 'v1beta', model: 'gemini-2.0-flash-lite' },
+    { version: 'v1beta', model: 'gemini-flash-latest' },
   ];
 
   for (const config of tryConfigs) {
