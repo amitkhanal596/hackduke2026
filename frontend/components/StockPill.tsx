@@ -52,14 +52,7 @@ export default function StockPill({ ticker, onRemove, onViewDetails }: StockPill
     } catch (err) {
       console.error('Error fetching stock data:', err);
       setError('Failed to load data');
-      // Set mock data for demo purposes
-      setStockData({
-        price: Math.random() * 200 + 50,
-        change: (Math.random() - 0.5) * 10,
-        changePercent: (Math.random() - 0.5) * 5,
-        volume: Math.floor(Math.random() * 10000000),
-        marketCap: `${(Math.random() * 1000 + 100).toFixed(0)}B`
-      });
+      // Don't set mock data - leave stockData as null to show error state
     } finally {
       setLoading(false);
       setUpdating(false);
