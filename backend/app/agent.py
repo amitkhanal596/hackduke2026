@@ -146,8 +146,8 @@ class WealthVisorAgent:
                     role = "user" if m["role"] == "user" else "model"
                     messages.append({"role": role, "parts": [m["content"]]})
 
-                # Create model - use gemini-2.5-flash for latest stable model
-                model = self.client.GenerativeModel("gemini-2.5-flash")
+                # Create model - use gemini-1.5-flash for latest stable model
+                model = self.client.GenerativeModel("gemini-1.5-flash")
                 response = model.generate_content(messages, generation_config={"temperature": 0.2})
                 return getattr(response, "text", "") or ""
             except Exception as e:
