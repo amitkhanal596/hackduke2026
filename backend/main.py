@@ -49,11 +49,11 @@ elevenlabs = ElevenLabs(api_key=os.getenv("ELEVENLABS_API_KEY"))
 gemini_api_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
 if gemini_api_key and gemini_api_key not in ["your_gemini_api_key_here", "placeholder_key", ""]:
     genai.configure(api_key=gemini_api_key)
-    gemini_model = genai.GenerativeModel('gemini-pro')
+    gemini_model = genai.GenerativeModel('gemini-1.5-flash')
 else:
     # Configure with placeholder for voice news only
     genai.configure(api_key="placeholder_key")
-    gemini_model = genai.GenerativeModel('gemini-pro')
+    gemini_model = genai.GenerativeModel('gemini-1.5-flash')
 
 # Initialize chat agent
 # Ensure Gemini API key is available
@@ -63,7 +63,7 @@ if gemini_api_key and not os.getenv("GOOGLE_API_KEY"):
 
 # Initialize Gemini for AI insights
 genai.configure(api_key=gemini_api_key)
-gemini_model = genai.GenerativeModel('gemini-pro')
+gemini_model = genai.GenerativeModel('gemini-1.5-flash')
 
 prompt_path = Path(__file__).resolve().parent / "app" / "Agent-Prompt copy.md"
 agent = WealthVisorAgent(system_prompt_path=prompt_path, workspace_root=Path(__file__).resolve().parent.parent)
