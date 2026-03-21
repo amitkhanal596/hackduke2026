@@ -6,6 +6,8 @@ from typing import List, Optional, Dict
 from typing import List, Optional, Dict
 from datetime import datetime
 import os
+import time
+import random
 from dotenv import load_dotenv
 import google.generativeai as genai
 
@@ -136,6 +138,92 @@ class SentimentExplanationRequest(BaseModel):
 class VoiceNewsRequest(BaseModel):
     text: Optional[str] = None
     tracked_stocks: List[str] = []
+
+class BullBearAnalysis(BaseModel):
+    ticker: str
+    bull_percentage: int
+    bear_percentage: int
+    analysis: str
+
+@app.get("/analyze/bull-bear/{ticker}", response_model=BullBearAnalysis)
+async def analyze_bull_bear(ticker: str):
+    """
+    Generate a Bull vs. Bear sentiment analysis for a specific ticker 
+    using Finnhub's Analyst Recommendation Trends API natively without an LLM.
+    """
+    try:
+        import requests
+        import logging
+        
+        logging.info(f"Generating deterministic Bull vs Bear analysis for {ticker}")
+        
+        ticker_upper = ticker.upper()
+        finnhub_key = os.getenv("FINNHUB_API_KEY")
+        
+        bull_pct = 50
+        bear_pct = 50
+        analysis_part = "Insufficient data to determine bullish or bearish sentiment."
+        
+        if finnhub_key:
+            # Call Finnhub Recommendation Trends API
+            url = f"https://finnhub.io/api/v1/stock/recommendation?symbol={ticker_upper}&token={finnhub_key}"
+            response = requests.get(url, timeout=10)
+            
+            if response.status_code == 200:
+                data = response.json()
+                if data and len(data) > 0:
+                    # The first item is usually the most recent month
+                    latest = data[0]
+                    
+                    strong_buy = latest.get("strongBuy", 0)
+                    buy = latest.get("buy", 0)
+                    hold = latest.get("hold", 0)
+                    sell = latest.get("sell", 0)
+                    strong_sell = latest.get("strongSell", 0)
+                    
+                    bull_votes = strong_buy + buy
+                    bear_votes = strong_sell + sell
+                    total_votes = bull_votes + bear_votes + hold
+                    
+                    if total_votes > 0:
+                        # Rescale ignoring hold to strictly pit Bull vs Bear up to 100%
+                        if (bull_votes + bear_votes) > 0:
+                            bull_pct = int((bull_votes / (bull_votes + bear_votes)) * 100)
+                            bear_pct = 100 - bull_pct
+                        
+                        # Generate a deterministic textual analysis based on Wall Street's consensus
+                        score_desc = f"Wall Street consensus based on {total_votes} active analysts. "
+                        score_desc += f"{bull_votes} recommend buying, {bear_votes} recommend selling, and {hold} recommend holding. "
+                        
+                        if bull_pct > 70:
+                            analysis_part = score_desc + f"The market sentiment for {ticker_upper} is highly bullish right now, characterized by strong Wall Street confidence."
+                        elif bull_pct > 55:
+                            analysis_part = score_desc + f"The sentiment leans moderately bullish for {ticker_upper}, indicating a majority of analysts see upside potential."
+                        elif bear_pct > 70:
+                            analysis_part = score_desc + f"The outlook for {ticker_upper} is highly bearish, with significant skepticism from Wall Street analysts."
+                        elif bear_pct > 55:
+                            analysis_part = score_desc + f"The sentiment leans bearish for {ticker_upper}, indicating more concerns and downside risk are priced in."
+                        else:
+                            analysis_part = score_desc + f"Market sentiment for {ticker_upper} is currently neutral or contested evenly between bulls and bears."
+            else:
+                logging.warning(f"Finnhub API returned status code {response.status_code}")
+
+        return BullBearAnalysis(
+            ticker=ticker_upper,
+            bull_percentage=bull_pct,
+            bear_percentage=bear_pct,
+            analysis=analysis_part
+        )
+
+    except Exception as e:
+        print(f"Error in bull/bear analysis: {e}")
+        # Return a neutral fallback instead of crashing
+        return BullBearAnalysis(
+            ticker=ticker,
+            bull_percentage=50,
+            bear_percentage=50,
+            analysis=f"Analysis failed due to technical error: {str(e)}"
+        )
 
 @app.get("/")
 async def root():

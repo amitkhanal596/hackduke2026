@@ -32,7 +32,7 @@ Keep responses concise but informative. Use emojis sparingly for engagement.`;
 
 async function callGemini(messages: Array<{ role: string; content: string }>, apiKey: string): Promise<string> {
   const tryConfigs = [
-    { version: 'v1beta', model: 'gemini-2.0-flash' },
+    { version: 'v1beta', model: 'gemini-1.5-flash' },
     { version: 'v1beta', model: 'gemini-2.0-flash-lite' },
     { version: 'v1beta', model: 'gemini-flash-latest' },
   ];
