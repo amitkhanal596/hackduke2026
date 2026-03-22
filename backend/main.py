@@ -1,8 +1,7 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Header
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 from pydantic import BaseModel
-from typing import List, Optional, Dict
 from typing import List, Optional, Dict
 from datetime import datetime
 import os
@@ -10,6 +9,7 @@ import time
 import random
 from dotenv import load_dotenv
 import google.generativeai as genai
+from supabase import create_client, Client
 
 from app.news_service import NewsService
 from app.event_analyzer import EventAnalyzer
@@ -24,6 +24,11 @@ load_dotenv()
 # Debug: Print env vars to verify they're loaded
 print(f"DEBUG: GEMINI_API_KEY exists: {os.getenv('GEMINI_API_KEY') is not None}")
 print(f"DEBUG: GOOGLE_API_KEY exists: {os.getenv('GOOGLE_API_KEY') is not None}")
+
+# Initialize Supabase client
+supabase_url = os.getenv("NEXT_PUBLIC_SUPABASE_URL")
+supabase_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+supabase: Client = create_client(supabase_url, supabase_key)
 
 app = FastAPI(title="Toro API", version="1.0.0")
 
@@ -69,6 +74,27 @@ gemini_model = genai.GenerativeModel('gemini-1.5-flash')
 
 prompt_path = Path(__file__).resolve().parent / "app" / "Agent-Prompt copy.md"
 agent = WealthVisorAgent(system_prompt_path=prompt_path, workspace_root=Path(__file__).resolve().parent.parent)
+
+# Helper function to get user from authorization header
+async def get_user_id_from_token(authorization: Optional[str] = Header(None)) -> Optional[str]:
+    """Extract user ID from Supabase JWT token"""
+    if not authorization:
+        return None
+
+    try:
+        # Remove 'Bearer ' prefix if present
+        token = authorization.replace("Bearer ", "")
+
+        # Verify the token with Supabase using the admin client
+        response = supabase.auth.get_user(token)
+        if response and hasattr(response, 'user') and response.user:
+            return response.user.id
+        return None
+    except Exception as e:
+        print(f"Error verifying token: {e}")
+        import traceback
+        traceback.print_exc()
+        return None
 
 # Pydantic models
 class AddTickerRequest(BaseModel):
@@ -309,25 +335,158 @@ Keep your response concise, professional, and focused on sentiment analysis."""
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.post("/add_ticker")
-async def add_ticker(request: AddTickerRequest):
-    """Add a stock ticker to track"""
+@app.get("/user/stocks")
+async def get_user_stocks(authorization: Optional[str] = Header(None)):
+    """Get all stocks for the authenticated user"""
     try:
+        user_id = await get_user_id_from_token(authorization)
+
+        if not user_id:
+            raise HTTPException(status_code=401, detail="Unauthorized")
+
+        # Fetch user's stocks from Supabase
+        response = supabase.table("user_stocks").select("symbol").eq("user_id", user_id).execute()
+
+        stocks = [row["symbol"] for row in response.data]
+        return {"stocks": stocks}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/add_ticker")
+async def add_ticker(request: AddTickerRequest, authorization: Optional[str] = Header(None)):
+    """Add a stock ticker to track for the authenticated user"""
+    try:
+        print(f"\n=== ADD TICKER DEBUG START ===")
+        print(f"1. Received request for ticker: {request.ticker}")
+        print(f"2. Authorization header present: {authorization is not None}")
+
+        user_id = await get_user_id_from_token(authorization)
+        print(f"3. User ID from token: {user_id}")
+
+        if not user_id:
+            print("4. ERROR: No user ID - Unauthorized")
+            raise HTTPException(status_code=401, detail="Unauthorized")
+
         ticker = request.ticker.upper()
-        # Validate ticker exists
-        import yfinance as yf
-        stock = yf.Ticker(ticker)
-        info = stock.info
+        print(f"5. Ticker uppercase: {ticker}")
 
-        if not info or 'symbol' not in info:
-            raise HTTPException(status_code=404, detail=f"Ticker {ticker} not found")
+        # Validate ticker exists - Try yfinance first, fallback to Finnhub
+        company_name = ticker
+        validation_successful = False
 
-        # Store in database (simplified for hackathon)
+        # Try yfinance first
+        print(f"6. Starting yfinance validation...")
+        try:
+            import yfinance as yf
+            stock = yf.Ticker(ticker)
+            print(f"7. Created yfinance Ticker object")
+            info = stock.info
+
+            if info and 'symbol' in info:
+                print(f"8. ✓ yfinance validation successful")
+                company_name = info.get("longName", ticker)
+                validation_successful = True
+            else:
+                print(f"8. yfinance returned no data, trying Finnhub...")
+        except Exception as yf_error:
+            print(f"8. yfinance failed ({type(yf_error).__name__}), trying Finnhub fallback...")
+
+        # Fallback to Finnhub if yfinance failed
+        if not validation_successful:
+            print(f"9. Using Finnhub for validation...")
+            finnhub_key = os.getenv("FINNHUB_API_KEY")
+
+            if finnhub_key:
+                try:
+                    import requests
+                    url = f"https://finnhub.io/api/v1/quote"
+                    params = {
+                        "symbol": ticker,
+                        "token": finnhub_key
+                    }
+                    response = requests.get(url, params=params, timeout=10)
+                    finnhub_data = response.json()
+
+                    # Check if we got valid data (current price exists and is non-zero)
+                    if "c" in finnhub_data and finnhub_data["c"] > 0:
+                        print(f"10. ✓ Finnhub validation successful - ${finnhub_data['c']}")
+                        validation_successful = True
+
+                        # Try to get company name from profile endpoint
+                        try:
+                            profile_url = f"https://finnhub.io/api/v1/stock/profile2"
+                            profile_params = {"symbol": ticker, "token": finnhub_key}
+                            profile_response = requests.get(profile_url, params=profile_params, timeout=10)
+                            profile_data = profile_response.json()
+                            if "name" in profile_data:
+                                company_name = profile_data["name"]
+                                print(f"11. Got company name from Finnhub: {company_name}")
+                        except:
+                            pass
+                    else:
+                        print(f"10. Finnhub returned invalid data for {ticker}")
+                except Exception as finnhub_error:
+                    print(f"10. Finnhub validation failed: {finnhub_error}")
+            else:
+                print(f"9. No Finnhub API key available")
+
+        # If both validations failed, return error
+        if not validation_successful:
+            print(f"ERROR: Ticker validation failed with both yfinance and Finnhub")
+            raise HTTPException(status_code=404, detail=f"Ticker {ticker} not found or validation services unavailable")
+
+        print(f"12. Ticker validated successfully, company: {company_name}")
+
+        # Add to user's stocks in Supabase
+        print(f"13. Attempting to insert into Supabase...")
+        try:
+            result = supabase.table("user_stocks").insert({
+                "user_id": user_id,
+                "symbol": ticker
+            }).execute()
+            print(f"14. Supabase insert successful")
+        except Exception as db_error:
+            print(f"14. ERROR inserting to Supabase: {db_error}")
+            # Handle duplicate entry (user already has this stock)
+            if "unique" in str(db_error).lower() or "duplicate" in str(db_error).lower():
+                raise HTTPException(status_code=400, detail=f"Stock {ticker} is already in your portfolio")
+            raise
+
+        print(f"15. SUCCESS - Returning response")
+        print(f"=== ADD TICKER DEBUG END ===\n")
         return {
             "ticker": ticker,
-            "company_name": info.get("longName", ticker),
+            "company_name": company_name,
             "message": "Ticker added successfully"
         }
+    except HTTPException:
+        print(f"ERROR: HTTPException raised")
+        raise
+    except Exception as e:
+        print(f"ERROR: Unexpected exception: {type(e).__name__}: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/remove_ticker/{ticker}")
+async def remove_ticker(ticker: str, authorization: Optional[str] = Header(None)):
+    """Remove a stock ticker from the user's portfolio"""
+    try:
+        user_id = await get_user_id_from_token(authorization)
+
+        if not user_id:
+            raise HTTPException(status_code=401, detail="Unauthorized")
+
+        ticker_upper = ticker.upper()
+
+        # Remove from user's stocks in Supabase
+        supabase.table("user_stocks").delete().eq("user_id", user_id).eq("symbol", ticker_upper).execute()
+
+        return {"message": f"Stock {ticker_upper} removed successfully"}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -761,11 +920,17 @@ async def generate_ai_insights(tracked_stocks: List[str], stock_data: List[Dict]
         return "Market analysts remain cautious about near-term volatility"
 
 
-async def get_tracked_stocks() -> List[str]:
-    """Get tracked stocks from database or return default popular stocks"""
+async def get_tracked_stocks(user_id: Optional[str] = None) -> List[str]:
+    """Get tracked stocks for a user or return default popular stocks"""
     try:
-        # Try to get from database first
-        # For now, return some popular stocks as defaults
+        if user_id:
+            # Get user-specific stocks
+            response = supabase.table("user_stocks").select("symbol").eq("user_id", user_id).execute()
+            stocks = [row["symbol"] for row in response.data]
+            if stocks:
+                return stocks
+
+        # Return default popular stocks if no user or no user stocks
         default_stocks = ["AAPL", "MSFT", "GOOGL", "AMZN", "TSLA", "META", "NVDA", "JPM", "JNJ", "V"]
         return default_stocks
     except Exception as e:

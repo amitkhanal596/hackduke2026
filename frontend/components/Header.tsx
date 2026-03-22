@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Search, TrendingUp, User, LogOut } from "lucide-react";
+import { supabase } from "@/lib/supabase";
 
 interface HeaderProps {
   onToggleSidebar: () => void;
@@ -12,17 +13,37 @@ export default function Header({ onToggleSidebar, isSidebarCollapsed }: HeaderPr
   const [sessionUser, setSessionUser] = useState<string | null>(null);
 
   useEffect(() => {
-    // Check if the user is mock-logged in
-    const storedUser = localStorage.getItem("toro_user");
-    if (storedUser) {
-      setSessionUser(storedUser);
+    // Check for Supabase session
+    async function checkSession() {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        const displayName = session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || "Trader";
+        setSessionUser(displayName);
+      }
     }
+
+    checkSession();
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session) {
+        const displayName = session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || "Trader";
+        setSessionUser(displayName);
+      } else {
+        setSessionUser(null);
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
     localStorage.removeItem("toro_user");
     setSessionUser(null);
-    window.location.reload();
+    window.location.href = "/";
   };
 
   return (

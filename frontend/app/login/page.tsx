@@ -6,24 +6,39 @@ import { InteractiveGrid } from "@/components/InteractiveGrid";
 import { Button } from "@/components/ui/button";
 import { TrendingUp, Lock } from "lucide-react";
 import Link from "next/link";
+import { supabase } from "@/lib/supabase";
 
 export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    // Simulate login sequence before routing to dashboard
-    setTimeout(() => {
-      // Create a display name from email (e.g. "john" from "john@email.com")
-      const displayName = email.split('@')[0];
-      localStorage.setItem("toro_user", displayName || "Trader");
+    setError("");
+
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) throw error;
+
+      if (data.user) {
+        // Get user's full name from metadata or use email
+        const displayName = data.user.user_metadata?.full_name || email.split('@')[0];
+        localStorage.setItem("toro_user", displayName || "Trader");
+        router.push("/");
+      }
+    } catch (err: any) {
+      setError(err.message || "An error occurred during login");
+    } finally {
       setIsLoading(false);
-      router.push("/");
-    }, 1500);
+    }
   };
 
   return (
@@ -50,6 +65,12 @@ export default function LoginPage() {
         </div>
 
         <form onSubmit={handleLogin} className="space-y-5">
+          {error && (
+            <div className="bg-red-500/10 border border-red-500/20 rounded-lg px-4 py-3 text-red-400 text-sm">
+              {error}
+            </div>
+          )}
+
           <div>
             <label className="block text-xs font-medium text-gray-400 mb-1.5 uppercase tracking-wider">
               Email Address

@@ -6,6 +6,7 @@ import { InteractiveGrid } from "@/components/InteractiveGrid";
 import { Button } from "@/components/ui/button";
 import { TrendingUp, UserPlus } from "lucide-react";
 import Link from "next/link";
+import { supabase } from "@/lib/supabase";
 
 export default function SignupPage() {
   const router = useRouter();
@@ -13,17 +14,42 @@ export default function SignupPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [showConfirmation, setShowConfirmation] = useState(false);
 
-  const handleSignup = (e: React.FormEvent) => {
+  const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    // Simulate signup sequence before routing to dashboard
-    setTimeout(() => {
-      // Save name for the dashboard to display
-      localStorage.setItem("toro_user", name || "Trader");
+    setError("");
+
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            full_name: name,
+          },
+        },
+      });
+
+      if (error) throw error;
+
+      if (data.user) {
+        // Check if email confirmation is required
+        if (data.user.identities && data.user.identities.length === 0) {
+          // User already exists
+          setError("An account with this email already exists. Please log in.");
+        } else {
+          // Show confirmation message
+          setShowConfirmation(true);
+        }
+      }
+    } catch (err: any) {
+      setError(err.message || "An error occurred during signup");
+    } finally {
       setIsLoading(false);
-      router.push("/");
-    }, 1500);
+    }
   };
 
   return (
@@ -33,23 +59,66 @@ export default function SignupPage() {
 
       {/* Professional Signup Card */}
       <div className="z-10 relative bg-black/60 backdrop-blur-xl border border-white/10 p-8 rounded-2xl w-full max-w-md shadow-[0_0_40px_rgba(16,185,129,0.05)] mx-4">
-        
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center mb-4">
-            <div className="relative">
-              <TrendingUp className="w-10 h-10 text-emerald-400" />
-              <div className="absolute inset-0 bg-emerald-500/30 blur-xl" />
-            </div>
-          </div>
-          <h1 className="text-3xl font-bold tracking-tight text-white mb-2">
-            Create an account
-          </h1>
-          <p className="text-gray-400 text-sm">
-            Join Toro to elevate your personal wealth management.
-          </p>
-        </div>
 
-        <form onSubmit={handleSignup} className="space-y-4">
+        {showConfirmation ? (
+          // Email Confirmation Screen
+          <div className="text-center">
+            <div className="inline-flex items-center justify-center mb-6">
+              <div className="relative">
+                <div className="w-16 h-16 bg-emerald-500/20 rounded-full flex items-center justify-center">
+                  <svg className="w-8 h-8 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                  </svg>
+                </div>
+                <div className="absolute inset-0 bg-emerald-500/30 blur-xl" />
+              </div>
+            </div>
+
+            <h1 className="text-2xl font-bold tracking-tight text-white mb-3">
+              Check your email
+            </h1>
+
+            <p className="text-gray-400 text-sm mb-6 leading-relaxed">
+              We've sent a confirmation email to <span className="text-white font-medium">{email}</span>.
+              Please click the link in the email to verify your account.
+            </p>
+
+            <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-lg px-4 py-3 text-emerald-400 text-sm mb-6">
+              <p className="font-medium mb-1">Important</p>
+              <p className="text-xs text-emerald-300/80">Check your spam folder if you don't see the email within a few minutes.</p>
+            </div>
+
+            <Link
+              href="/login"
+              className="inline-block bg-emerald-500 hover:bg-emerald-400 text-black font-semibold px-6 py-3 rounded-lg transition-all"
+            >
+              Go to Login
+            </Link>
+          </div>
+        ) : (
+          <>
+            <div className="text-center mb-8">
+              <div className="inline-flex items-center justify-center mb-4">
+                <div className="relative">
+                  <TrendingUp className="w-10 h-10 text-emerald-400" />
+                  <div className="absolute inset-0 bg-emerald-500/30 blur-xl" />
+                </div>
+              </div>
+              <h1 className="text-3xl font-bold tracking-tight text-white mb-2">
+                Create an account
+              </h1>
+              <p className="text-gray-400 text-sm">
+                Join Toro to elevate your personal wealth management.
+              </p>
+            </div>
+
+            <form onSubmit={handleSignup} className="space-y-4">
+          {error && (
+            <div className="bg-red-500/10 border border-red-500/20 rounded-lg px-4 py-3 text-red-400 text-sm">
+              {error}
+            </div>
+          )}
+
           <div>
             <label className="block text-xs font-medium text-gray-400 mb-1.5 uppercase tracking-wider">
               Full Name
@@ -109,11 +178,13 @@ export default function SignupPage() {
               </span>
             )}
           </Button>
-        </form>
+            </form>
 
-        <div className="mt-8 text-center text-sm text-gray-500">
-          Already have an account? <Link href="/login" className="text-white font-medium hover:text-emerald-400 transition-colors">Log in</Link>
-        </div>
+            <div className="mt-8 text-center text-sm text-gray-500">
+              Already have an account? <Link href="/login" className="text-white font-medium hover:text-emerald-400 transition-colors">Log in</Link>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
