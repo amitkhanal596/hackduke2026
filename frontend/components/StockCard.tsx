@@ -45,59 +45,57 @@ export default function StockCard({
 
   return (
     <>
-      <div 
-        className="bg-black/40 backdrop-blur-sm border-white/10 rounded-lg p-6 hover:border-purple/50 transition-all"
-        style={{
-          boxShadow: '0 0 25px rgba(16, 185, 129, 0.06), inset 0 0 15px rgba(16, 185, 129, 0.02)'
-        }}
-      >
-        {/* Header */}
-        <div className="flex justify-between items-start mb-4">
-          <div className="flex items-center gap-3">
+      <div className="bg-white/5 backdrop-blur-2xl border border-white/10 rounded-2xl p-6 hover:bg-white/10 hover:border-emerald-400/30 transition-all shadow-[0_8px_32px_rgba(0,0,0,0.3)] relative overflow-hidden group">
+        <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+        <div className="relative z-10">
+          {/* Header */}
+          <div className="flex justify-between items-start mb-4">
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setShowPriceModal(true)}
+                className="font-mono font-black text-2xl bg-gradient-to-r from-emerald-400 to-green-400 bg-clip-text text-transparent tracking-tight hover:from-emerald-300 hover:to-green-300 transition-all cursor-pointer"
+              >
+                {ticker}
+              </button>
+              <button
+                onClick={() => setShowAnalysis(true)}
+                className="p-1.5 rounded-full bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 transition-colors"
+                title="View Bull vs Bear Analysis"
+              >
+                <Activity className="w-4 h-4" />
+              </button>
+            </div>
             <button
-              onClick={() => setShowPriceModal(true)}
-              className="font-mono font-black text-2xl text-white tracking-tight hover:text-purple transition-colors cursor-pointer"
+              onClick={onRemove}
+              className="text-gray-400 hover:text-emerald-400 transition-colors p-1"
             >
-              {ticker}
-            </button>
-            <button
-              onClick={() => setShowAnalysis(true)}
-              className="p-1.5 rounded-full bg-purple/10 text-purple hover:bg-purple/20 transition-colors"
-              title="View Bull vs Bear Analysis"
-            >
-              <Activity className="w-4 h-4" />
+              <X className="w-5 h-5" />
             </button>
           </div>
-          <button
-            onClick={onRemove}
-            className="text-gray-400 hover:text-purple transition-colors p-1"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
 
-        {/* Toggle */}
-        <div className="flex gap-2 mb-4">
-          <button
-            onClick={() => setShowPast(true)}
-            className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
-              showPast
-                ? "bg-purple text-white"
-                : "bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white"
-            }`}
-          >
-            Past Events
-          </button>
-          <button
-            onClick={() => setShowPast(false)}
-            className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
-              !showPast
-                ? "bg-purple text-white"
-                : "bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white"
-            }`}
-          >
-            Upcoming
-          </button>
+          {/* Toggle */}
+          <div className="flex gap-2 mb-4">
+            <button
+              onClick={() => setShowPast(true)}
+              className={`px-3 py-1 rounded-lg text-sm font-medium transition-all ${
+                showPast
+                  ? "bg-gradient-to-r from-emerald-400 to-green-400 text-black shadow-[0_4px_12px_rgba(109,212,154,0.3)]"
+                  : "bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white backdrop-blur-sm"
+              }`}
+            >
+              Past Events
+            </button>
+            <button
+              onClick={() => setShowPast(false)}
+              className={`px-3 py-1 rounded-lg text-sm font-medium transition-all ${
+                !showPast
+                  ? "bg-gradient-to-r from-emerald-400 to-green-400 text-black shadow-[0_4px_12px_rgba(109,212,154,0.3)]"
+                  : "bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white backdrop-blur-sm"
+              }`}
+            >
+              Upcoming
+            </button>
+          </div>
         </div>
 
         {/* Events List */}
@@ -107,7 +105,7 @@ export default function StockCard({
               pastEvents.slice(0, 5).map((event, index) => (
                 <div
                   key={index}
-                  className={`border-l-4 border-purple pl-3 py-2 bg-white/5 rounded hover:bg-white/10 transition-colors card-animate ${
+                  className={`border border-emerald-500/20 bg-black/40 backdrop-blur-sm rounded-lg p-3 hover:bg-black/60 hover:border-emerald-500/40 transition-all group relative overflow-hidden card-animate ${
                     index === 0 ? 'card-animate-delay-100' :
                     index === 1 ? 'card-animate-delay-200' :
                     index === 2 ? 'card-animate-delay-300' :
@@ -115,50 +113,59 @@ export default function StockCard({
                     'card-animate-delay-500'
                   }`}
                 >
-                  <div className="flex justify-between items-start">
-                    <div className="flex-1">
-                      <p className="font-semibold text-white">{event.event}</p>
-                      <p className="text-xs text-gray-400 font-mono">
-                        {format(new Date(event.date), "MMM dd, yyyy")}
-                      </p>
+                  {/* Subtle glow on hover */}
+                  <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+
+                  <div className="relative z-10">
+                    <div className="flex justify-between items-start gap-3 mb-2">
+                      <div className="flex-1 min-w-0">
+                        <p className="font-bold text-white text-sm truncate">{event.event}</p>
+                        <p className="text-xs text-emerald-400/60 font-mono mt-0.5">
+                          {format(new Date(event.date), "MMM dd, yyyy")}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-1.5 shrink-0 pl-2">
+                        {event.car_0_1 > 0 ? (
+                          <TrendingUp className="w-4 h-4 text-emerald-400" />
+                        ) : (
+                          <TrendingDown className="w-4 h-4 text-red-400" />
+                        )}
+                        <span
+                          className={`text-base font-black font-mono tabular-nums ${getCarColor(event.car_0_1)}`}
+                        >
+                          {event.car_0_1 > 0 ? "+" : ""}
+                          {event.car_0_1.toFixed(2)}%
+                        </span>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-1">
-                      {event.car_0_1 > 0 ? (
-                        <TrendingUp className="w-4 h-4 text-chartGreen" />
-                      ) : (
-                        <TrendingDown className="w-4 h-4 text-chartRed" />
-                      )}
+
+                    <div className="flex items-center gap-2 mb-2">
                       <span
-                        className={`text-lg font-bold font-mono ${getCarColor(event.car_0_1)}`}
+                        className={`text-xs px-2 py-0.5 rounded font-mono border ${getSentimentColor(
+                          event.sentiment
+                        )}`}
                       >
-                        {event.car_0_1 > 0 ? "+" : ""}
-                        {event.car_0_1.toFixed(2)}%
+                        {event.sentiment}
+                      </span>
+                      <span className="text-xs text-gray-500 font-mono">
+                        Vol: {event.volatility_change.toFixed(2)}x
                       </span>
                     </div>
+
+                    <p className="text-xs text-gray-400 leading-relaxed">{event.conclusion}</p>
                   </div>
-                  <div className="mt-2 flex items-center gap-2">
-                    <span
-                      className={`text-xs px-2 py-1 rounded border ${getSentimentColor(
-                        event.sentiment
-                      )}`}
-                    >
-                      {event.sentiment}
-                    </span>
-                    <span className="text-xs text-gray-400 font-mono">
-                      Vol: {event.volatility_change.toFixed(2)}x
-                    </span>
-                  </div>
-                  <p className="text-xs text-gray-400 mt-2">{event.conclusion}</p>
                 </div>
               ))
             ) : (
-              <p className="text-gray-400 text-sm">No past events available</p>
+              <div className="text-center py-8">
+                <p className="text-emerald-500/50 text-sm font-mono">[NO_PAST_EVENTS]</p>
+              </div>
             )
           ) : upcomingEvents.length > 0 ? (
             upcomingEvents.map((event, index) => (
               <div
                 key={index}
-                className={`border-l-4 border-purple pl-3 py-2 bg-white/5 rounded hover:bg-white/10 transition-colors card-animate ${
+                className={`border border-emerald-500/20 bg-black/40 backdrop-blur-sm rounded-lg p-3 hover:bg-black/60 hover:border-emerald-500/40 transition-all group relative overflow-hidden card-animate ${
                   index === 0 ? 'card-animate-delay-100' :
                   index === 1 ? 'card-animate-delay-200' :
                   index === 2 ? 'card-animate-delay-300' :
@@ -166,15 +173,18 @@ export default function StockCard({
                   'card-animate-delay-500'
                 }`}
               >
-                <div className="flex justify-between items-start">
-                  <div className="flex-1">
-                    <p className="font-semibold text-white">{event.type}</p>
-                    <p className="text-xs text-gray-400 font-mono">
+                {/* Subtle glow on hover */}
+                <div className="absolute inset-0 bg-gradient-to-r from-purple-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+
+                <div className="relative z-10 flex justify-between items-center gap-3">
+                  <div className="flex-1 min-w-0">
+                    <p className="font-bold text-white text-sm truncate">{event.type}</p>
+                    <p className="text-xs text-emerald-400/60 font-mono mt-0.5">
                       {format(new Date(event.date), "MMM dd, yyyy")}
                     </p>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs px-2 py-1 bg-purple/10 text-purple border border-purple/30 rounded">
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="text-xs px-2 py-1 bg-purple/20 text-purple border border-purple/40 rounded font-mono font-semibold">
                       {event.expected_impact}
                     </span>
                     <button
@@ -184,7 +194,7 @@ export default function StockCard({
                         date: event.date,
                         ticker: ticker
                       })}
-                      className="p-1.5 bg-purple/20 hover:bg-purple/30 text-purple rounded transition-colors"
+                      className="p-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded transition-all hover:border-emerald-500/60"
                       title="Add to Google Calendar"
                     >
                       <Calendar className="w-4 h-4" />
@@ -194,7 +204,9 @@ export default function StockCard({
               </div>
             ))
           ) : (
-            <p className="text-gray-400 text-sm">No upcoming events</p>
+            <div className="text-center py-8">
+              <p className="text-emerald-500/50 text-sm font-mono">[NO_UPCOMING_EVENTS]</p>
+            </div>
           )}
         </div>
       </div>

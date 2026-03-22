@@ -10,6 +10,8 @@ import AgentChat from "./AgentChat";
 import VoiceNewsButton from "./VoiceNewsButton";
 import Onboarding from "./Onboarding";
 import StockPillsContainer from "./StockPillsContainer";
+import OptimizedDotBackground from "./OptimizedDotBackground";
+import ShootingStarsOverlay from "./ShootingStarsOverlay";
 import { stockList } from "@/lib/stockList";
 import type { NewsArticle } from "@/lib/api";
 import { X } from "lucide-react";
@@ -220,17 +222,40 @@ export default function DashboardLayout({
         <Onboarding onComplete={handleCompleteOnboarding} />
       )}
 
-      <div className="flex h-screen bg-black text-white">
+      <div className="flex h-screen bg-black text-white relative overflow-hidden">
+        {/* Optimized Dot Grid Background */}
+        <OptimizedDotBackground />
+
+        {/* Shooting Stars Overlay */}
+        <ShootingStarsOverlay />
+
+        {/* Liquid Glass Gradient Orbs Background */}
+        <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
+          {/* Top Left Orb - Cyan to Green */}
+          <div className="absolute -top-40 -left-40 w-96 h-96 bg-gradient-to-br from-cyan-400/15 via-emerald-400/10 to-green-500/8 rounded-full blur-3xl animate-[pulse_8s_ease-in-out_infinite]" />
+
+          {/* Top Right Orb - Purple to Green */}
+          <div className="absolute -top-32 right-20 w-[500px] h-[500px] bg-gradient-to-bl from-purple-400/12 via-emerald-300/8 to-cyan-400/15 rounded-full blur-3xl animate-[pulse_10s_ease-in-out_infinite]" />
+
+          {/* Bottom Center Orb - Green to Teal */}
+          <div className="absolute -bottom-40 left-1/3 w-[600px] h-[600px] bg-gradient-to-t from-teal-400/15 via-green-400/10 to-emerald-500/8 rounded-full blur-3xl animate-[pulse_12s_ease-in-out_infinite]" />
+
+          {/* Floating orb - Emerald */}
+          <div className="absolute top-1/2 right-1/4 w-64 h-64 bg-gradient-to-br from-emerald-300/12 to-green-400/6 rounded-full blur-2xl animate-[pulse_7s_ease-in-out_infinite]" />
+        </div>
+
         {/* Sidebar */}
-        <Sidebar
-          activeSection={activeSection}
-          onSectionChange={setActiveSection}
-          isCollapsed={isSidebarCollapsed}
-          onToggleCollapse={handleToggleSidebar}
-        />
+        <div className="relative z-20">
+          <Sidebar
+            activeSection={activeSection}
+            onSectionChange={setActiveSection}
+            isCollapsed={isSidebarCollapsed}
+            onToggleCollapse={handleToggleSidebar}
+          />
+        </div>
 
         {/* Main Content */}
-        <div className="flex-1 flex flex-col overflow-hidden">
+        <div className="flex-1 flex flex-col overflow-hidden relative z-20">
           {/* Header */}
           <Header
             onToggleSidebar={handleToggleSidebar}

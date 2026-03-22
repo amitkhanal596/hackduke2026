@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { supabase } from './supabase';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -7,6 +8,19 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+});
+
+// Add request interceptor to include authentication token
+api.interceptors.request.use(async (config) => {
+  const { data: { session } } = await supabase.auth.getSession();
+
+  if (session?.access_token) {
+    config.headers.Authorization = `Bearer ${session.access_token}`;
+  }
+
+  return config;
+}, (error) => {
+  return Promise.reject(error);
 });
 
 export interface NewsArticle {
@@ -65,8 +79,18 @@ export interface BullBearAnalysis {
   analysis: string;
 }
 
+export const getUserStocks = async () => {
+  const response = await api.get<{ stocks: string[] }>('/user/stocks');
+  return response.data.stocks;
+};
+
 export const addTicker = async (ticker: string) => {
   const response = await api.post('/add_ticker', { ticker });
+  return response.data;
+};
+
+export const removeTicker = async (ticker: string) => {
+  const response = await api.delete(`/remove_ticker/${ticker}`);
   return response.data;
 };
 
