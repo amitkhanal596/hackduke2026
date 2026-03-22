@@ -7,7 +7,8 @@ from datetime import datetime, timedelta
 import os
 import time
 import random
-from dotenv import load_dotenv
+from dotenv import load_dotenv, find_dotenv
+from supabase import create_client, Client
 
 from app.news_service import NewsService
 from app.event_analyzer import EventAnalyzer
@@ -26,16 +27,16 @@ import re
 from google.oauth2 import service_account
 from google.cloud import texttospeech
 
-load_dotenv()
+load_dotenv(find_dotenv(usecwd=True) or find_dotenv())
 
 # Debug: Print env vars to verify they're loaded
 print(f"DEBUG: GEMINI_API_KEY exists: {os.getenv('GEMINI_API_KEY') is not None}")
 print(f"DEBUG: GOOGLE_API_KEY exists: {os.getenv('GOOGLE_API_KEY') is not None}")
 
 # Initialize Supabase client
-supabase_url = os.getenv("NEXT_PUBLIC_SUPABASE_URL")
-supabase_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
-supabase: Client = create_client(supabase_url, supabase_key)
+supabase_url = os.getenv("NEXT_PUBLIC_SUPABASE_URL", "").rstrip("/")
+supabase_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
+supabase: Client = create_client(supabase_url, supabase_key) if supabase_url and supabase_key else None
 
 app = FastAPI(title="Toro API", version="1.0.0")
 
@@ -71,7 +72,7 @@ agent = WealthVisorAgent(system_prompt_path=prompt_path, workspace_root=Path(__f
 # Helper function to get user from authorization header
 async def get_user_id_from_token(authorization: Optional[str] = Header(None)) -> Optional[str]:
     """Extract user ID from Supabase JWT token"""
-    if not authorization:
+    if not authorization or not supabase:
         return None
 
     try:
