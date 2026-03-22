@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { InteractiveGrid } from "@/components/InteractiveGrid";
 import WealthVisorChat from "@/components/WealthVisorChat";
+import OptimizedDotBackground from "@/components/OptimizedDotBackground";
 import { TrendingUp, ShieldCheck, Zap, Brain, ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
@@ -12,24 +13,22 @@ import { supabase } from "@/lib/supabase";
 function LandingPage() {
   return (
     <div className="bg-black min-h-screen text-[#6dd49a] flex flex-col relative overflow-hidden font-mono">
+      {/* Optimized Dot Grid Background */}
+      <OptimizedDotBackground />
+
       {/* Liquid Glass Gradient Orbs */}
       <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
         {/* Top Left Orb - Cyan to Green */}
-        <div className="absolute -top-40 -left-40 w-96 h-96 bg-gradient-to-br from-cyan-400/30 via-emerald-400/25 to-green-500/20 rounded-full blur-3xl animate-[pulse_8s_ease-in-out_infinite]" />
+        <div className="absolute -top-40 -left-40 w-96 h-96 bg-gradient-to-br from-cyan-400/20 via-emerald-400/15 to-green-500/10 rounded-full blur-3xl animate-[pulse_8s_ease-in-out_infinite]" />
 
         {/* Top Right Orb - Purple to Green */}
-        <div className="absolute -top-32 right-20 w-[500px] h-[500px] bg-gradient-to-bl from-purple-400/20 via-emerald-300/15 to-cyan-400/25 rounded-full blur-3xl animate-[pulse_10s_ease-in-out_infinite]" />
+        <div className="absolute -top-32 right-20 w-[500px] h-[500px] bg-gradient-to-bl from-purple-400/15 via-emerald-300/10 to-cyan-400/15 rounded-full blur-3xl animate-[pulse_10s_ease-in-out_infinite]" />
 
         {/* Bottom Center Orb - Green to Teal */}
-        <div className="absolute -bottom-40 left-1/3 w-[600px] h-[600px] bg-gradient-to-t from-teal-400/25 via-green-400/20 to-emerald-500/15 rounded-full blur-3xl animate-[pulse_12s_ease-in-out_infinite]" />
+        <div className="absolute -bottom-40 left-1/3 w-[600px] h-[600px] bg-gradient-to-t from-teal-400/15 via-green-400/10 to-emerald-500/8 rounded-full blur-3xl animate-[pulse_12s_ease-in-out_infinite]" />
 
         {/* Floating orb - Emerald */}
-        <div className="absolute top-1/2 right-1/4 w-64 h-64 bg-gradient-to-br from-emerald-300/20 to-green-400/10 rounded-full blur-2xl animate-[pulse_7s_ease-in-out_infinite]" />
-      </div>
-
-      {/* Noise Texture for grain */}
-      <div className="fixed inset-0 pointer-events-none z-30 opacity-[0.015] mix-blend-overlay">
-        <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMDAiIGhlaWdodD0iMzAwIj48ZmlsdGVyIGlkPSJhIiB4PSIwIiB5PSIwIj48ZmVUdXJidWxlbmNlIGJhc2VGcmVxdWVuY3k9Ii43NSIgc3RpdGNoVGlsZXM9InN0aXRjaCIgdHlwZT0iZnJhY3RhbE5vaXNlIi8+PGZlQ29sb3JNYXRyaXggdHlwZT0ic2F0dXJhdGUiIHZhbHVlcz0iMCIvPjwvZmlsdGVyPjxwYXRoIGQ9Ik0wIDBoMzAwdjMwMEgweiIgZmlsdGVyPSJ1cmwoI2EpIiBvcGFjaXR5PSIuMDUiLz48L3N2Zz4=')]" />
+        <div className="absolute top-1/2 right-1/4 w-64 h-64 bg-gradient-to-br from-emerald-300/15 to-green-400/8 rounded-full blur-2xl animate-[pulse_7s_ease-in-out_infinite]" />
       </div>
 
       <InteractiveGrid />

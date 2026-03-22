@@ -47,21 +47,16 @@ export default function Header({ onToggleSidebar, isSidebarCollapsed }: HeaderPr
   };
 
   return (
-    <header 
-      className="sticky top-0 z-40 bg-black/80 backdrop-blur-xl border-b border-white/10"
-      style={{
-        boxShadow: '0 0 25px rgba(16, 185, 129, 0.06), inset 0 0 15px rgba(16, 185, 129, 0.02)'
-      }}
-    >
-      <div className="absolute inset-x-0 bg-gradient-to-r from-transparent via-purple to-transparent h-px" />
-      
-      <div className="px-4 py-4">
+    <header className="sticky top-0 z-40 bg-black/20 backdrop-blur-2xl border-b border-white/10 relative">
+      <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/5 via-transparent to-cyan-500/5" />
+
+      <div className="px-4 py-4 relative">
         <div className="flex items-center justify-between">
           {/* Left Section - Menu Button */}
           <div className="flex items-center gap-3">
             <button
               onClick={onToggleSidebar}
-              className="p-2 hover:bg-white/10 rounded-lg transition-colors lg:hidden"
+              className="p-2 hover:bg-white/10 rounded-lg transition-colors lg:hidden backdrop-blur-sm"
             >
               <Search className="w-5 h-5" />
             </button>
@@ -70,18 +65,17 @@ export default function Header({ onToggleSidebar, isSidebarCollapsed }: HeaderPr
           {/* Center Section - Toro Logo */}
           <div className="flex items-center gap-3">
             <div className="relative">
-              <TrendingUp className="w-7 h-7 text-green" />
-              <div className="absolute inset-0 bg-green/50 blur-lg" />
+              <TrendingUp className="w-7 h-7 text-emerald-400" />
             </div>
-            <span className="font-black text-2xl tracking-tight text-green">Toro</span>
+            <span className="font-black text-2xl tracking-tight bg-gradient-to-r from-emerald-400 to-green-400 bg-clip-text text-transparent">Toro</span>
           </div>
 
           {/* Right Section - Powered by Gemini and Auth State */}
           <div className="flex items-center gap-4 border-l border-white/10 pl-4 py-1">
             <span className="text-gray-400 text-sm font-medium hidden md:inline-block">Powered by Gemini</span>
-            
+
             {sessionUser ? (
-              <div className="flex items-center gap-3 bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 ml-2">
+              <div className="flex items-center gap-3 bg-white/5 backdrop-blur-sm border border-white/10 rounded-lg px-3 py-1.5 ml-2 shadow-[0_4px_16px_rgba(0,0,0,0.2)]">
                 <div className="flex items-center gap-2">
                   <div className="bg-emerald-500/20 text-emerald-400 p-1 rounded-full">
                     <User className="w-3.5 h-3.5" />
@@ -90,7 +84,7 @@ export default function Header({ onToggleSidebar, isSidebarCollapsed }: HeaderPr
                     {sessionUser}
                   </span>
                 </div>
-                <button 
+                <button
                   onClick={handleLogout}
                   className="text-gray-500 hover:text-emerald-400 transition-colors ml-1 border-l border-white/10 pl-3"
                   title="Sign out"
@@ -100,15 +94,15 @@ export default function Header({ onToggleSidebar, isSidebarCollapsed }: HeaderPr
               </div>
             ) : (
               <div className="flex items-center gap-2 ml-2">
-                <a 
-                  href="/login" 
-                  className="text-gray-300 hover:text-white font-medium px-3 py-2 rounded-lg text-sm transition-colors"
+                <a
+                  href="/login"
+                  className="text-gray-300 hover:text-white font-medium px-3 py-2 rounded-lg text-sm transition-colors bg-white/5 backdrop-blur-sm border border-white/10"
                 >
                   Log In
                 </a>
-                <a 
-                  href="/signup" 
-                  className="bg-emerald-500 hover:bg-emerald-400 text-black font-semibold px-4 py-2 rounded-lg text-sm transition-colors"
+                <a
+                  href="/signup"
+                  className="bg-gradient-to-br from-emerald-400 to-green-500 hover:from-emerald-300 hover:to-green-400 text-black font-semibold px-4 py-2 rounded-lg text-sm transition-all shadow-[0_4px_16px_rgba(109,212,154,0.3)]"
                 >
                   Sign Up
                 </a>

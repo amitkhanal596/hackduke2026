@@ -260,26 +260,40 @@ async def analyze_bull_bear(ticker: str):
         # Weighted Average
         final_bull_pct = int((analyst_score * 0.4) + (news_score * 0.3) + (momentum_score * 0.3))
         final_bear_pct = 100 - final_bull_pct
-        
-        # Determine strict conclusion
-        if final_bull_pct >= 70:
-            conclusion = "AGGRESSIVE BULLISH. The quant engine detects massive upside confluence across Wall Street, news cycles, and price momentum."
-        elif final_bull_pct >= 55:
-            conclusion = "LEANING BULLISH. Technicals and sentiment indicate favorable conditions, though some resistance remains."
-        elif final_bear_pct >= 70:
-            conclusion = "AGGRESSIVE BEARISH. Severe downside warnings triggered. Avoid exposure unless shorting."
-        elif final_bear_pct >= 55:
-            conclusion = "LEANING BEARISH. Headwinds detected in momentum and sentiment. Caution advised."
-        else:
-            conclusion = "NEUTRAL CHOP. The asset is exhibiting contested price action and conflicting sentiment variables."
 
-        # Compile the "Insane" Response
-        analysis_part = f"📊 **Toro Quant Engine V2 Analysis for {ticker_upper}**\n\n"
-        analysis_part += f"**Final Probability Matrix:** Bullish ({final_bull_pct}%) vs Bearish ({final_bear_pct}%)\n\n"
-        analysis_part += f"**1. Institutional Vector (40% Weight):**\n- {analyst_desc}\n- Sub-score: {analyst_score}/100\n\n"
-        analysis_part += f"**2. Media Sentiment Flow (30% Weight):**\n- {news_desc}\n- Sub-score: {news_score}/100\n\n"
-        analysis_part += f"**3. Velocity & Momentum (30% Weight):**\n- {momentum_desc}\n- Sub-score: {momentum_score}/100\n\n"
-        analysis_part += f"**Engine Conclusion:** {conclusion}"
+        # Determine strict conclusion with better thresholds
+        if final_bull_pct >= 70:
+            conclusion = "AGGRESSIVE BULLISH"
+            explanation = "The quant engine detects massive upside confluence across Wall Street, news cycles, and price momentum."
+        elif final_bull_pct >= 60:
+            conclusion = "BULLISH"
+            explanation = "Strong positive signals across multiple factors indicate favorable conditions."
+        elif final_bull_pct >= 52:
+            conclusion = "LEANING BULLISH"
+            explanation = "Slight bullish tilt detected, though signals are not overwhelming. Proceed with caution."
+        elif final_bear_pct >= 70:
+            conclusion = "AGGRESSIVE BEARISH"
+            explanation = "Severe downside warnings triggered. Avoid exposure unless shorting."
+        elif final_bear_pct >= 60:
+            conclusion = "BEARISH"
+            explanation = "Multiple risk factors detected across institutional, sentiment, and momentum vectors."
+        elif final_bear_pct >= 52:
+            conclusion = "LEANING BEARISH"
+            explanation = "Headwinds detected in momentum and sentiment. Caution advised."
+        else:
+            conclusion = "NEUTRAL"
+            explanation = "The asset is exhibiting contested price action and conflicting sentiment variables."
+
+        # Compile compact, mobile-friendly response (plain text, no markdown)
+        analysis_part = f"""{conclusion}
+Bull {final_bull_pct}% | Bear {final_bear_pct}%
+
+{explanation}
+
+Key Factors:
+• Wall Street: {analyst_score}/100
+• News Sentiment: {news_score}/100
+• Price Momentum: {momentum_score}/100"""
 
         return BullBearAnalysis(
             ticker=ticker_upper,
