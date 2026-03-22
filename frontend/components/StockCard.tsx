@@ -4,8 +4,9 @@ import { useState } from "react";
 import { createPortal } from "react-dom";
 import type { EventAnalysis, UpcomingEvent } from "@/lib/api";
 import { format } from "date-fns";
-import { TrendingUp, TrendingDown, X, Calendar } from "lucide-react";
+import { TrendingUp, TrendingDown, X, Calendar, Activity } from "lucide-react";
 import PriceDisplay from "./PriceDisplay";
+import BullBearAnalysisPanel from "./BullBearAnalysisPanel";
 import { addToGoogleCalendar } from "@/lib/calendar";
 
 interface StockCardProps {
@@ -23,6 +24,7 @@ export default function StockCard({
 }: StockCardProps) {
   const [showPast, setShowPast] = useState(true);
   const [showPriceModal, setShowPriceModal] = useState(false);
+  const [showAnalysis, setShowAnalysis] = useState(false);
 
   const getSentimentColor = (sentiment: string) => {
     switch (sentiment.toLowerCase()) {
@@ -51,12 +53,21 @@ export default function StockCard({
       >
         {/* Header */}
         <div className="flex justify-between items-start mb-4">
-          <button
-            onClick={() => setShowPriceModal(true)}
-            className="font-mono font-black text-2xl text-white tracking-tight hover:text-purple transition-colors cursor-pointer"
-          >
-            {ticker}
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setShowPriceModal(true)}
+              className="font-mono font-black text-2xl text-white tracking-tight hover:text-purple transition-colors cursor-pointer"
+            >
+              {ticker}
+            </button>
+            <button
+              onClick={() => setShowAnalysis(true)}
+              className="p-1.5 rounded-full bg-purple/10 text-purple hover:bg-purple/20 transition-colors"
+              title="View Bull vs Bear Analysis"
+            >
+              <Activity className="w-4 h-4" />
+            </button>
+          </div>
           <button
             onClick={onRemove}
             className="text-gray-400 hover:text-purple transition-colors p-1"
@@ -188,6 +199,14 @@ export default function StockCard({
         </div>
       </div>
 
+      {showAnalysis && createPortal(
+        <BullBearAnalysisPanel
+          ticker={ticker}
+          isOpen={showAnalysis}
+          onClose={() => setShowAnalysis(false)}
+        />,
+        document.body
+      )}
       {/* Price Modal */}
       {showPriceModal && typeof document !== 'undefined' && createPortal(
         <PriceDisplay

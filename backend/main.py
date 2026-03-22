@@ -6,6 +6,8 @@ from typing import List, Optional, Dict
 from typing import List, Optional, Dict
 from datetime import datetime
 import os
+import time
+import random
 from dotenv import load_dotenv
 
 from app.news_service import NewsService
@@ -129,6 +131,138 @@ class SentimentExplanationRequest(BaseModel):
 class VoiceNewsRequest(BaseModel):
     text: Optional[str] = None
     tracked_stocks: List[str] = []
+
+class BullBearAnalysis(BaseModel):
+    ticker: str
+    bull_percentage: int
+    bear_percentage: int
+    analysis: str
+
+@app.get("/analyze/bull-bear/{ticker}", response_model=BullBearAnalysis)
+async def analyze_bull_bear(ticker: str):
+    """
+    Toro Proprietary Quant Engine: Multi-Factor Sentiment Analysis
+    Combines Wall Street Analyst consensus, real-time news sentiment, 
+    and price momentum indicators into a definitive Bull/Bear probability.
+    """
+    try:
+        import requests
+        import logging
+        
+        logging.info(f"Running Insane Quant Analysis for {ticker}")
+        
+        ticker_upper = ticker.upper()
+        finnhub_key = os.getenv("FINNHUB_API_KEY")
+        
+        # --- Factors ---
+        analyst_score = 50
+        news_score = 50
+        momentum_score = 50
+        
+        analyst_desc = "No analyst data available."
+        news_desc = "No recent news data."
+        momentum_desc = "No price momentum data."
+
+        # 1. Analyst Consensus (Weight: 40%)
+        if finnhub_key:
+            url = f"https://finnhub.io/api/v1/stock/recommendation?symbol={ticker_upper}&token={finnhub_key}"
+            try:
+                response = requests.get(url, timeout=10)
+                if response.status_code == 200:
+                    data = response.json()
+                    if data and len(data) > 0:
+                        latest = data[0]
+                        bull_votes = latest.get("strongBuy", 0) + latest.get("buy", 0)
+                        bear_votes = latest.get("strongSell", 0) + latest.get("sell", 0)
+                        total_votes = bull_votes + bear_votes + latest.get("hold", 0)
+                        
+                        if (bull_votes + bear_votes) > 0:
+                            analyst_score = int((bull_votes / (bull_votes + bear_votes)) * 100)
+                        
+                        analyst_desc = f"Wall Street consensus holds {bull_votes} Buys to {bear_votes} Sells (out of {total_votes} total ratings)."
+            except Exception as e:
+                logging.warning(f"Finnhub API error: {e}")
+
+        # 2. News Sentiment Vector (Weight: 30%)
+        try:
+            articles = await news_service.fetch_news_for_tickers([ticker_upper])
+            pos = 0
+            neg = 0
+            for a in articles:
+                # Handle both object and dict formats from news service
+                if isinstance(a, dict):
+                    sentiment = a.get("sentiment", "neutral").lower()
+                else:
+                    sentiment = getattr(a, "sentiment", "neutral").lower()
+
+                if sentiment == "positive":
+                    pos += 1
+                elif sentiment == "negative":
+                    neg += 1
+            
+            if (pos + neg) > 0:
+                news_score = int((pos / (pos + neg)) * 100)
+                news_desc = f"Analyzed {len(articles)} recent breaking articles: {pos} Positive, {neg} Negative."
+            else:
+                news_desc = f"Analyzed {len(articles)} recent articles, resulting in a strictly neutral vector."
+        except Exception as e:
+            logging.warning(f"News fetch error: {e}")
+
+        # 3. Price Momentum Oscillator (Weight: 30%)
+        try:
+            price_data = await get_price_data(ticker_upper)
+            w1 = price_data.change_1w_percent
+            m1 = price_data.change_1m_percent
+            
+            # Mathematical momentum normalization (Base 50. Add bounded growth vectors)
+            raw_momentum = 50 + max(-25, min(25, m1 * 1.5)) + max(-25, min(25, w1 * 3))
+            momentum_score = int(max(0, min(100, raw_momentum)))
+            
+            momentum_desc = f"1-Week Delta: {w1:.2f}% | 1-Month Delta: {m1:.2f}%."
+        except Exception as e:
+            logging.warning(f"Price data error: {e}")
+
+
+        # --- Final Quant Calculation ---
+        # Weighted Average
+        final_bull_pct = int((analyst_score * 0.4) + (news_score * 0.3) + (momentum_score * 0.3))
+        final_bear_pct = 100 - final_bull_pct
+        
+        # Determine strict conclusion
+        if final_bull_pct >= 70:
+            conclusion = "AGGRESSIVE BULLISH. The quant engine detects massive upside confluence across Wall Street, news cycles, and price momentum."
+        elif final_bull_pct >= 55:
+            conclusion = "LEANING BULLISH. Technicals and sentiment indicate favorable conditions, though some resistance remains."
+        elif final_bear_pct >= 70:
+            conclusion = "AGGRESSIVE BEARISH. Severe downside warnings triggered. Avoid exposure unless shorting."
+        elif final_bear_pct >= 55:
+            conclusion = "LEANING BEARISH. Headwinds detected in momentum and sentiment. Caution advised."
+        else:
+            conclusion = "NEUTRAL CHOP. The asset is exhibiting contested price action and conflicting sentiment variables."
+
+        # Compile the "Insane" Response
+        analysis_part = f"📊 **Toro Quant Engine V2 Analysis for {ticker_upper}**\n\n"
+        analysis_part += f"**Final Probability Matrix:** Bullish ({final_bull_pct}%) vs Bearish ({final_bear_pct}%)\n\n"
+        analysis_part += f"**1. Institutional Vector (40% Weight):**\n- {analyst_desc}\n- Sub-score: {analyst_score}/100\n\n"
+        analysis_part += f"**2. Media Sentiment Flow (30% Weight):**\n- {news_desc}\n- Sub-score: {news_score}/100\n\n"
+        analysis_part += f"**3. Velocity & Momentum (30% Weight):**\n- {momentum_desc}\n- Sub-score: {momentum_score}/100\n\n"
+        analysis_part += f"**Engine Conclusion:** {conclusion}"
+
+        return BullBearAnalysis(
+            ticker=ticker_upper,
+            bull_percentage=final_bull_pct,
+            bear_percentage=final_bear_pct,
+            analysis=analysis_part
+        )
+
+    except Exception as e:
+        print(f"Error in bull/bear quant engine: {e}")
+        return BullBearAnalysis(
+            ticker=ticker,
+            bull_percentage=50,
+            bear_percentage=50,
+            analysis=f"Engine failure due to technical constraint: {str(e)}"
+        )
 
 @app.get("/")
 async def root():

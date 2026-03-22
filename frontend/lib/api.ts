@@ -58,6 +58,13 @@ export interface ChartData {
   data: ChartDataPoint[];
 }
 
+export interface BullBearAnalysis {
+  ticker: string;
+  bull_percentage: number;
+  bear_percentage: number;
+  analysis: string;
+}
+
 export const addTicker = async (ticker: string) => {
   const response = await api.post('/add_ticker', { ticker });
   return response.data;
@@ -90,6 +97,11 @@ export const getPriceData = async (ticker: string) => {
 
 export const getChartData = async (ticker: string, period: string) => {
   const response = await api.get<ChartData>(`/chart/${ticker}/${period}`);
+  return response.data;
+};
+
+export const getBullBearAnalysis = async (ticker: string) => {
+  const response = await api.get<BullBearAnalysis>(`/analyze/bull-bear/${ticker}`);
   return response.data;
 };
 

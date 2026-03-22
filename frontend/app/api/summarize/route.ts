@@ -17,7 +17,7 @@ async function tryGemini(prompt: string, apiKey: string) {
 
   // Try different model configurations - using newer Gemini models
   const tryConfigs = [
-    { version: 'v1beta', model: 'gemini-2.0-flash' },
+    { version: 'v1beta', model: 'gemini-1.5-flash' },
     { version: 'v1beta', model: 'gemini-2.0-flash-lite' },
     { version: 'v1beta', model: 'gemini-flash-latest' },
   ];
