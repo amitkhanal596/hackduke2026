@@ -1,0 +1,12 @@
+*.DS_Store*
+frontend/node_modules
+frontend/.next
+backend/app/__pycache__
+backend/.env
+backend/toro.db
+frontend/.env.local
+.claude
+.vscode
+*.env
+*venv
+backend/venv*
