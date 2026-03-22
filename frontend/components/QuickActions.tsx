@@ -2,6 +2,7 @@
 
 import { Plus, TrendingUp, Sparkles, Activity, Volume2 } from "lucide-react";
 import VoiceNewsButton from "./VoiceNewsButton";
+import ToroVoiceButton from "./ToroVoiceButton";
 
 interface QuickActionsProps {
   onAddStock: () => void;
@@ -39,6 +40,9 @@ export default function QuickActions({
 
       {/* Voice News Button */}
       <VoiceNewsButton />
+
+      {/* Toro Voice Assistant */}
+      <ToroVoiceButton />
 
       {/* Live Status */}
       <div className="flex items-center gap-2 bg-purple/10 px-4 py-2 border border-purple/30 rounded-full">

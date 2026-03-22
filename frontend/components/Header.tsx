@@ -1,6 +1,7 @@
 "use client";
 
 import { Search, TrendingUp } from "lucide-react";
+import ToroVoiceButton from "./ToroVoiceButton";
 
 interface HeaderProps {
   onToggleSidebar: () => void;
@@ -38,9 +39,10 @@ export default function Header({ onToggleSidebar, isSidebarCollapsed }: HeaderPr
             <span className="font-black text-2xl tracking-tight text-green">Toro</span>
           </div>
 
-          {/* Right Section - Powered by Gemini */}
+          {/* Right Section - Voice Button + Powered by Gemini */}
           <div className="flex items-center gap-3">
-            <span className="text-gray-400 text-sm font-medium">Powered by Gemini 2.5</span>
+            <ToroVoiceButton />
+            <span className="text-gray-400 text-sm font-medium hidden sm:block">Powered by Gemini 2.5</span>
           </div>
         </div>
       </div>

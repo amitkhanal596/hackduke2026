@@ -9,15 +9,14 @@ import json
 import logging
 from typing import Dict, Any, Optional
 from pydantic import BaseModel, Field, validator
-import google.generativeai as genai
+import google.genai as genai
 import os
 
 logger = logging.getLogger(__name__)
 
 # Configure Gemini
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
-if GEMINI_API_KEY:
-    genai.configure(api_key=GEMINI_API_KEY)
+gemini_client = genai.Client(api_key=GEMINI_API_KEY) if GEMINI_API_KEY else None
 
 
 # ============================================================================
@@ -124,11 +123,9 @@ async def run_security_agent(raw_data: str) -> CleanData:
     Removes prompt injection attempts and sanitizes input
     """
     try:
-        model = genai.GenerativeModel('gemini-1.5-flash')
-
         prompt = f"{SECURITY_AGENT_PROMPT}\n\nInput Data:\n{raw_data}"
 
-        response = model.generate_content(prompt)
+        response = gemini_client.models.generate_content(model='gemini-1.5-flash', contents=prompt)
         result_text = response.text.strip()
 
         # Extract JSON from response
@@ -181,11 +178,9 @@ async def run_bull_agent(clean_data: str) -> BullAnalysis:
     Generates optimistic analysis with confidence scoring
     """
     try:
-        model = genai.GenerativeModel('gemini-1.5-flash')
-
         prompt = f"{BULL_AGENT_PROMPT}\n\nClean Data:\n{clean_data}"
 
-        response = model.generate_content(prompt)
+        response = gemini_client.models.generate_content(model='gemini-1.5-flash', contents=prompt)
         result_text = response.text.strip()
 
         # Extract JSON from response
@@ -240,11 +235,9 @@ async def run_bear_agent(clean_data: str) -> BearAnalysis:
     Generates risk-focused analysis with confidence scoring
     """
     try:
-        model = genai.GenerativeModel('gemini-1.5-flash')
-
         prompt = f"{BEAR_AGENT_PROMPT}\n\nClean Data:\n{clean_data}"
 
-        response = model.generate_content(prompt)
+        response = gemini_client.models.generate_content(model='gemini-1.5-flash', contents=prompt)
         result_text = response.text.strip()
 
         # Extract JSON from response
@@ -314,8 +307,6 @@ async def run_scoring_agent(
     Performs math-based normalization and generates final recommendation
     """
     try:
-        model = genai.GenerativeModel('gemini-1.5-flash')
-
         # Prepare structured input
         input_data = {
             "bull_score": bull_analysis.bull_score,
@@ -326,7 +317,7 @@ async def run_scoring_agent(
 
         prompt = f"{SCORING_AGENT_PROMPT}\n\nInput Data:\n{json.dumps(input_data, indent=2)}"
 
-        response = model.generate_content(prompt)
+        response = gemini_client.models.generate_content(model='gemini-1.5-flash', contents=prompt)
         result_text = response.text.strip()
 
         # Extract JSON from response

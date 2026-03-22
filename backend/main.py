@@ -7,7 +7,6 @@ from typing import List, Optional, Dict
 from datetime import datetime
 import os
 from dotenv import load_dotenv
-import google.generativeai as genai
 
 from app.news_service import NewsService
 from app.event_analyzer import EventAnalyzer
@@ -15,7 +14,15 @@ from app.database import Database
 from app.agent import WealthVisorAgent
 from pathlib import Path
 from elevenlabs import ElevenLabs
-import google.generativeai as genai
+from elevenlabs.types import VoiceSettings
+import google.genai as genai
+import requests
+import base64
+import json
+import subprocess
+import signal
+from google.oauth2 import service_account
+from google.cloud import texttospeech
 
 load_dotenv()
 
@@ -47,23 +54,9 @@ elevenlabs = ElevenLabs(api_key=os.getenv("ELEVENLABS_API_KEY"))
 
 # Initialize Gemini AI
 gemini_api_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
-if gemini_api_key and gemini_api_key not in ["your_gemini_api_key_here", "placeholder_key", ""]:
-    genai.configure(api_key=gemini_api_key)
-    gemini_model = genai.GenerativeModel('gemini-1.5-flash')
-else:
-    # Configure with placeholder for voice news only
-    genai.configure(api_key="placeholder_key")
-    gemini_model = genai.GenerativeModel('gemini-1.5-flash')
-
-# Initialize chat agent
-# Ensure Gemini API key is available
-gemini_api_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
 if gemini_api_key and not os.getenv("GOOGLE_API_KEY"):
     os.environ["GOOGLE_API_KEY"] = gemini_api_key
-
-# Initialize Gemini for AI insights
-genai.configure(api_key=gemini_api_key)
-gemini_model = genai.GenerativeModel('gemini-1.5-flash')
+gemini_client = genai.Client(api_key=gemini_api_key)
 
 prompt_path = Path(__file__).resolve().parent / "app" / "Agent-Prompt copy.md"
 agent = WealthVisorAgent(system_prompt_path=prompt_path, workspace_root=Path(__file__).resolve().parent.parent)
@@ -603,7 +596,7 @@ async def generate_ai_insights(tracked_stocks: List[str], stock_data: List[Dict]
 
         # Generate AI insights
         try:
-            response = gemini_model.generate_content(prompt)
+            response = gemini_client.models.generate_content(model='gemini-1.5-flash', contents=prompt)
             insights = response.text.strip()
         except Exception as e:
             print(f"Gemini API error: {e}")
@@ -782,12 +775,54 @@ async def generate_watchlist_script(tracked_stocks: List[str]) -> str:
             return "Welcome to The Scoop, your financial news update. Market conditions are showing mixed signals today. Stay tuned for more updates on your portfolio performance and market movements."
 
 
+async def generate_tts_audio(script: str) -> bytes:
+    """Generate TTS audio using Google Cloud TTS (service account) first, falling back to ElevenLabs."""
+    creds_json = os.getenv("GOOGLE_TTS_CREDENTIALS")
+    if creds_json:
+        try:
+            creds_info = json.loads(creds_json)
+            credentials = service_account.Credentials.from_service_account_info(
+                creds_info,
+                scopes=["https://www.googleapis.com/auth/cloud-platform"]
+            )
+            client = texttospeech.TextToSpeechClient(credentials=credentials)
+            synthesis_input = texttospeech.SynthesisInput(text=script)
+            voice = texttospeech.VoiceSelectionParams(
+                language_code="en-US",
+                ssml_gender=texttospeech.SsmlVoiceGender.MALE
+            )
+            audio_config = texttospeech.AudioConfig(
+                audio_encoding=texttospeech.AudioEncoding.MP3
+            )
+            response = client.synthesize_speech(
+                input=synthesis_input, voice=voice, audio_config=audio_config
+            )
+            print("TTS: using Google Cloud TTS")
+            return response.audio_content
+        except Exception as e:
+            print(f"Google TTS failed, falling back to ElevenLabs: {e}")
+
+    # Fallback: ElevenLabs
+    print("TTS: using ElevenLabs")
+    voice_id = "VR6AewLTigWG4xSOukaG"
+    audio = elevenlabs.text_to_speech.convert(
+        voice_id=voice_id,
+        text=script,
+        model_id="eleven_multilingual_v2",
+        voice_settings=VoiceSettings(
+            stability=0.75,
+            similarity_boost=0.85,
+            style=0.4,
+            use_speaker_boost=True
+        )
+    )
+    return b"".join(audio)
+
+
 @app.post("/voice-news")
 async def generate_voice_news(request: VoiceNewsRequest):
-    """Generate voice news using ElevenLabs with dynamic content"""
+    """Generate voice news with dynamic content"""
     try:
-        voice_id = "VR6AewLTigWG4xSOukaG"  # Josh - rare, distinctive male voice
-
         # Determine which script to use
         if request.text:
             # Use provided text directly (from frontend)
@@ -803,22 +838,8 @@ async def generate_voice_news(request: VoiceNewsRequest):
             script = await generate_watchlist_script(tracked_stocks)
             print(f"Generated script for default stocks: {tracked_stocks}")
 
-        # Generate audio with professional news anchor characteristics
-        audio = elevenlabs.generate(
-            text=script,
-            voice=voice_id,
-            model="eleven_multilingual_v2",
-            voice_settings={
-                "stability": 0.75,  # Good stability while preserving unique characteristics
-                "similarity_boost": 0.85,  # High similarity for clear pronunciation
-                "style": 0.4,  # Higher style to showcase the rare voice's distinctive qualities
-                "use_speaker_boost": True
-            }
-        )
-        
-        # Convert to bytes
-        audio_bytes = b"".join(audio)
-        
+        audio_bytes = await generate_tts_audio(script)
+
         return Response(
             content=audio_bytes,
             media_type="audio/mpeg",
@@ -827,7 +848,7 @@ async def generate_voice_news(request: VoiceNewsRequest):
                 "Content-Length": str(len(audio_bytes))
             }
         )
-        
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error generating voice: {str(e)}")
 
@@ -836,29 +857,13 @@ async def generate_voice_news(request: VoiceNewsRequest):
 async def generate_dynamic_voice_news():
     """Generate voice news with dynamic stock content - no parameters needed"""
     try:
-        voice_id = "VR6AewLTigWG4xSOukaG"  # Josh - rare, distinctive male voice
-        
         # Get tracked stocks and generate dynamic script
         tracked_stocks = await get_tracked_stocks()
         script = await generate_watchlist_script(tracked_stocks)
         print(f"Generated dynamic script for stocks: {tracked_stocks}")
 
-        # Generate audio with professional news anchor characteristics
-        audio = elevenlabs.generate(
-            text=script,
-            voice=voice_id,
-            model="eleven_multilingual_v2",
-            voice_settings={
-                "stability": 0.75,  # Good stability while preserving unique characteristics
-                "similarity_boost": 0.85,  # High similarity for clear pronunciation
-                "style": 0.4,  # Higher style to showcase the rare voice's distinctive qualities
-                "use_speaker_boost": True
-            }
-        )
-        
-        # Convert to bytes
-        audio_bytes = b"".join(audio)
-        
+        audio_bytes = await generate_tts_audio(script)
+
         return Response(
             content=audio_bytes,
             media_type="audio/mpeg",
@@ -867,7 +872,7 @@ async def generate_dynamic_voice_news():
                 "Content-Length": str(len(audio_bytes))
             }
         )
-        
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error generating dynamic voice: {str(e)}")
 
@@ -884,6 +889,55 @@ async def get_voice_news_script():
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error generating script: {str(e)}")
+
+
+# ============================================================================
+# Toro Voice Assistant Endpoints
+# ============================================================================
+
+_voice_assistant_proc: subprocess.Popen | None = None
+
+
+@app.post("/voice-assistant/start")
+async def start_voice_assistant():
+    global _voice_assistant_proc
+    if _voice_assistant_proc and _voice_assistant_proc.poll() is None:
+        return {"status": "already_running"}
+    script = Path(__file__).parent / "voice_assistant.py"
+    _voice_assistant_proc = subprocess.Popen(
+        ["python", str(script)],
+        cwd=str(Path(__file__).parent),
+    )
+    return {"status": "started", "pid": _voice_assistant_proc.pid}
+
+
+@app.post("/voice-assistant/stop")
+async def stop_voice_assistant():
+    global _voice_assistant_proc
+    if _voice_assistant_proc is None or _voice_assistant_proc.poll() is not None:
+        _voice_assistant_proc = None
+        return {"status": "not_running"}
+    _voice_assistant_proc.terminate()
+    try:
+        _voice_assistant_proc.wait(timeout=3)
+    except subprocess.TimeoutExpired:
+        _voice_assistant_proc.kill()
+    _voice_assistant_proc = None
+    return {"status": "stopped"}
+
+
+@app.get("/voice-assistant/status")
+async def voice_assistant_status():
+    global _voice_assistant_proc
+    running = _voice_assistant_proc is not None and _voice_assistant_proc.poll() is None
+    state = "stopped"
+    if running:
+        state_file = Path(__file__).parent / "toro_state.txt"
+        try:
+            state = state_file.read_text().strip() or "idle"
+        except Exception:
+            state = "idle"
+    return {"running": running, "state": state}
 
 
 # ============================================================================

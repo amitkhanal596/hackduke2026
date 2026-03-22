@@ -51,12 +51,12 @@ class WealthVisorAgent:
     def _init_client(self):
         if self.provider == "gemini":
             try:
-                import google.generativeai as genai  # type: ignore
+                import google.genai as genai  # type: ignore
                 api_key = os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY")
                 print(f"[Agent Debug] Configuring Gemini with API key: {api_key[:10]}...")
-                genai.configure(api_key=api_key)
+                client = genai.Client(api_key=api_key)
                 print("[Agent Debug] Gemini client configured successfully")
-                return genai
+                return client
             except Exception as e:
                 print(f"[Agent Debug] Error initializing Gemini client: {e}")
                 return None
@@ -146,9 +146,11 @@ class WealthVisorAgent:
                     role = "user" if m["role"] == "user" else "model"
                     messages.append({"role": role, "parts": [m["content"]]})
 
-                # Create model - use gemini-1.5-flash for latest stable model
-                model = self.client.GenerativeModel("gemini-1.5-flash")
-                response = model.generate_content(messages, generation_config={"temperature": 0.2})
+                response = self.client.models.generate_content(
+                    model="gemini-1.5-flash",
+                    contents=messages,
+                    config={"temperature": 0.2}
+                )
                 return getattr(response, "text", "") or ""
             except Exception as e:
                 return f"Sorry, I had trouble contacting the model: {e}"
