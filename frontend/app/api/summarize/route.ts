@@ -1,4 +1,50 @@
 import { NextRequest, NextResponse } from "next/server";
+import { normalizeLocale } from "@/lib/locale";
+
+const TRANSLATE_TARGETS: Record<string, string> = {
+  es: "Spanish",
+  hi: "Hindi",
+  fr: "French",
+  de: "German",
+  ar: "Arabic",
+  "pt-BR": "Brazilian Portuguese",
+  ja: "Japanese",
+  "zh-CN": "Simplified Chinese",
+};
+
+async function translateSummary(summary: string, locale: string, apiKey: string): Promise<string> {
+  if (!summary || locale === "en-US") {
+    return summary;
+  }
+
+  const targetLanguage = TRANSLATE_TARGETS[locale];
+  if (!targetLanguage) {
+    return summary;
+  }
+
+  const translatePrompt = `Translate the following financial market summary into ${targetLanguage}.\n\nRules:\n- Preserve markdown-style bullets and structure\n- Keep stock tickers, numbers, dates, percentages, and currency values unchanged\n- Preserve financial tone and meaning\n- Return only the translated summary text\n\nSummary:\n${summary}`;
+
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+  const response = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      contents: [{ parts: [{ text: translatePrompt }] }],
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error("Gemini translation request failed");
+  }
+
+  const data = await response.json();
+  const translated = data.candidates?.[0]?.content?.parts?.[0]?.text;
+  if (!translated) {
+    throw new Error("Gemini translation returned empty output");
+  }
+
+  return translated;
+}
 
 async function tryGemini(prompt: string, apiKey: string) {
   // First, try to get the list of available models
@@ -122,7 +168,10 @@ async function tryGroq(prompt: string, apiKey: string) {
 
 export async function POST(request: NextRequest) {
   try {
-    const { articles } = await request.json();
+    const { articles, locale } = await request.json();
+    const normalizedLocale = normalizeLocale(
+      locale || request.headers.get("x-user-locale") || "en-US",
+    );
 
     if (!articles || !Array.isArray(articles)) {
       return NextResponse.json(
@@ -203,7 +252,26 @@ Provide a comprehensive summary:`;
       );
     }
 
-    return NextResponse.json({ summary });
+    const geminiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
+    let translatedSummary = summary;
+    let translationStatus: "not-requested" | "translated" | "fallback-original" = "not-requested";
+
+    if (geminiKey && normalizedLocale !== "en-US") {
+      try {
+        translatedSummary = await translateSummary(summary, normalizedLocale, geminiKey);
+        translationStatus = "translated";
+      } catch (translationError) {
+        console.error("Summary translation failed, using original summary:", translationError);
+        translationStatus = "fallback-original";
+      }
+    }
+
+    return NextResponse.json({
+      summary: translatedSummary,
+      locale: normalizedLocale,
+      translation_status: translationStatus,
+      original_summary: translationStatus === "translated" ? summary : undefined,
+    });
   } catch (error: any) {
     console.error("Error summarizing news:", error);
     return NextResponse.json(

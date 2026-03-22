@@ -8,9 +8,14 @@ import OptimizedDotBackground from "@/components/OptimizedDotBackground";
 import { TrendingUp, ShieldCheck, Zap, Brain, ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
+import { useAppLocale } from "@/lib/useAppLocale";
+import { getUICopy } from "@/lib/uiCopy";
 
 // --- LANDING PAGE COMPONENT ---
 function LandingPage() {
+  const { locale } = useAppLocale();
+  const copy = getUICopy(locale);
+
   return (
     <div className="bg-black min-h-screen text-[#6dd49a] flex flex-col relative overflow-hidden font-mono">
       {/* Optimized Dot Grid Background */}
@@ -41,7 +46,7 @@ function LandingPage() {
           <div className="flex items-center gap-2 text-[#6dd49a]/50 text-xs mb-2">
             <span>█</span>
             <span className="animate-pulse">_</span>
-            <span className="ml-auto">SYSTEM: ONLINE</span>
+            <span className="ml-auto">{copy.landing.systemOnline}</span>
           </div>
 
           <div className="flex justify-between items-center">
@@ -56,10 +61,10 @@ function LandingPage() {
             </div>
             <div className="flex items-center gap-4">
               <Link href="/login" className="text-[#6dd49a]/70 hover:text-[#6dd49a] font-medium px-3 py-2 text-sm transition-colors border border-white/10 hover:border-[#6dd49a]/40 backdrop-blur-sm bg-white/5 rounded-lg hidden sm:block">
-                [LOGIN]
+                {copy.landing.login}
               </Link>
               <Link href="/signup" className="bg-gradient-to-br from-emerald-400 to-green-500 hover:from-emerald-300 hover:to-green-400 text-black font-bold px-5 py-2.5 text-sm transition-all shadow-[0_0_30px_rgba(109,212,154,0.3)] hover:shadow-[0_0_40px_rgba(109,212,154,0.5)] rounded-lg">
-                &gt; GET STARTED
+                {copy.landing.getStarted}
               </Link>
             </div>
           </div>
@@ -75,7 +80,7 @@ function LandingPage() {
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-50"></span>
             <span className="relative inline-flex rounded-full h-3 w-3 bg-gradient-to-br from-emerald-400 to-green-400"></span>
           </span>
-          <span>REAL-TIME ANALYTICS ACTIVE</span>
+          <span>{copy.landing.analyticsActive}</span>
           <span className="text-[#4db87e]">█</span>
         </div>
 
@@ -83,31 +88,31 @@ function LandingPage() {
         <div className="mb-8 text-center">
           <pre className="text-[#6dd49a]/65 text-xs md:text-sm leading-tight mb-4">
 {`╔════════════════════════════════════════════╗
-║   MARKET INTELLIGENCE TERMINAL  v2.026    ║
+║   ${copy.landing.marketTerminal.padEnd(40, " ")}║
 ╚════════════════════════════════════════════╝`}
           </pre>
         </div>
 
         <h1 className="text-4xl md:text-7xl font-bold text-center tracking-tight mb-4 max-w-5xl leading-tight">
-          <span className="text-[#6dd49a]">Smart Trading,</span>
+          <span className="text-[#6dd49a]">{copy.landing.heroLine1}</span>
           <br/>
-          <span className="text-[#4db87e]">Made Simple</span>
+          <span className="text-[#4db87e]">{copy.landing.heroLine2}</span>
           <span className="animate-pulse">_</span>
         </h1>
 
         <p className="text-sm md:text-base text-[#6dd49a]/75 text-center max-w-2xl mb-12 leading-relaxed font-mono px-6 border-l border-[#6dd49a]/25 bg-black/30 py-4">
-          <span className="text-[#4db87e]">//</span> Professional-grade market analytics designed for everyday investors.
+          <span className="text-[#4db87e]">//</span> {copy.landing.heroSub1}
           <br/>
-          <span className="text-[#4db87e]">//</span> Real-time insights, AI-powered analysis, no complexity.
+          <span className="text-[#4db87e]">//</span> {copy.landing.heroSub2}
         </p>
 
         <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto mb-16">
           <Link href="/signup" className="group flex items-center justify-center gap-3 bg-gradient-to-br from-emerald-400 via-green-400 to-teal-400 hover:from-emerald-300 hover:via-green-300 hover:to-teal-300 text-black font-bold text-base px-8 py-4 transition-all shadow-[0_8px_32px_rgba(109,212,154,0.4)] hover:shadow-[0_12px_48px_rgba(109,212,154,0.6)] rounded-xl">
-            <span>&gt;&gt; Start Trading</span>
+            <span>{copy.landing.startTrading}</span>
             <ArrowRight className="w-5 h-5 group-hover:translate-x-2 transition-transform" />
           </Link>
           <Link href="/login" className="flex items-center justify-center gap-3 bg-white/5 hover:bg-white/10 backdrop-blur-xl border border-white/20 hover:border-emerald-400/50 text-[#6dd49a] font-bold text-base px-8 py-4 transition-all shadow-[0_8px_32px_rgba(0,0,0,0.2)] hover:shadow-[0_8px_32px_rgba(109,212,154,0.2)] rounded-xl">
-            <span>&gt; Sign In</span>
+            <span>{copy.landing.signIn}</span>
           </Link>
         </div>
 
@@ -118,13 +123,13 @@ function LandingPage() {
             <div className="relative z-10">
               <div className="flex items-center gap-2 mb-4 text-[#6dd49a]/55 text-xs">
                 <span>█</span>
-                <span>ANALYTICS</span>
+                <span>{copy.landing.analytics}</span>
                 <span className="ml-auto group-hover:text-[#6dd49a] transition-colors">█</span>
               </div>
               <Brain className="w-10 h-10 text-emerald-400 mb-4" />
-              <h3 className="text-[#6dd49a] font-bold text-lg mb-3 tracking-wide">&gt; Smart Data Engine</h3>
+              <h3 className="text-[#6dd49a] font-bold text-lg mb-3 tracking-wide">{copy.landing.smartDataEngine}</h3>
               <p className="text-[#6dd49a]/70 text-sm leading-relaxed font-mono">
-                Powerful analytics that synthesize news sentiment, price trends, and market consensus into clear, actionable insights.
+                {copy.landing.smartDataEngineDesc}
               </p>
             </div>
           </div>
@@ -134,13 +139,13 @@ function LandingPage() {
             <div className="relative z-10">
               <div className="flex items-center gap-2 mb-4 text-[#6dd49a]/55 text-xs">
                 <span>█</span>
-                <span>AI ASSISTANT</span>
+                <span>{copy.landing.aiAssistant}</span>
                 <span className="ml-auto group-hover:text-[#6dd49a] transition-colors">█</span>
               </div>
               <Zap className="w-10 h-10 text-green-400 mb-4" />
-              <h3 className="text-[#6dd49a] font-bold text-lg mb-3 tracking-wide">&gt; WealthVisor AI</h3>
+              <h3 className="text-[#6dd49a] font-bold text-lg mb-3 tracking-wide">{copy.landing.wealthVisorAi}</h3>
               <p className="text-[#6dd49a]/70 text-sm leading-relaxed font-mono">
-                Your personal AI advisor that explains complex market data in plain English, helping you make informed investment decisions.
+                {copy.landing.wealthVisorAiDesc}
               </p>
             </div>
           </div>
@@ -150,13 +155,13 @@ function LandingPage() {
             <div className="relative z-10">
               <div className="flex items-center gap-2 mb-4 text-[#6dd49a]/55 text-xs">
                 <span>█</span>
-                <span>PROBABILITIES</span>
+                <span>{copy.landing.probabilities}</span>
                 <span className="ml-auto group-hover:text-[#6dd49a] transition-colors">█</span>
               </div>
               <ShieldCheck className="w-10 h-10 text-teal-400 mb-4" />
-              <h3 className="text-[#6dd49a] font-bold text-lg mb-3 tracking-wide">&gt; Market Confidence</h3>
+              <h3 className="text-[#6dd49a] font-bold text-lg mb-3 tracking-wide">{copy.landing.marketConfidence}</h3>
               <p className="text-[#6dd49a]/70 text-sm leading-relaxed font-mono">
-                Clear bull/bear probability scores and sentiment analysis to help you understand market direction and manage risk effectively.
+                {copy.landing.marketConfidenceDesc}
               </p>
             </div>
           </div>
@@ -164,8 +169,8 @@ function LandingPage() {
 
         {/* Terminal Footer Prompt */}
         <div className="mt-16 text-center text-[#6dd49a]/45 text-xs font-mono">
-          <p>$ system_status: operational | market_feed: live | latency: &lt;10ms</p>
-          <p className="mt-1 animate-pulse">█ ready_</p>
+          <p>{copy.landing.systemStatus}</p>
+          <p className="mt-1 animate-pulse">{copy.landing.systemReady}</p>
         </div>
       </main>
 
@@ -177,6 +182,8 @@ function LandingPage() {
 
 // --- DASHBOARD COMPONENT ---
 function DashboardApp() {
+  const { locale } = useAppLocale();
+  const copy = getUICopy(locale);
   const [trackedStocks, setTrackedStocks] = useState<string[]>([]);
   const [isAgentChatVisible, setIsAgentChatVisible] = useState(false);
   const [isLoadingStocks, setIsLoadingStocks] = useState(true);
@@ -207,7 +214,7 @@ function DashboardApp() {
         setTrackedStocks([...trackedStocks, ticker.toUpperCase()]);
       } catch (error) {
         console.error('Failed to add stock:', error);
-        alert('Failed to add stock. Please try again.');
+        alert(copy.auth.addStockFailed);
       }
     }
   };
@@ -220,7 +227,7 @@ function DashboardApp() {
       setTrackedStocks(newStocks);
     } catch (error) {
       console.error('Failed to remove stock:', error);
-      alert('Failed to remove stock. Please try again.');
+      alert(copy.auth.removeStockFailed);
     }
   };
 
@@ -233,7 +240,7 @@ function DashboardApp() {
       <div className="bg-black min-h-screen text-white flex items-center justify-center">
         <div className="text-center">
           <div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-400">Loading your portfolio...</p>
+          <p className="text-gray-400">{copy.auth.loadingPortfolio}</p>
         </div>
       </div>
     );

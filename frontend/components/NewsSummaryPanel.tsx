@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { X, Sparkles, RefreshCw } from "lucide-react";
 import type { NewsArticle } from "@/lib/api";
+import { getPreferredLocale } from "@/lib/locale";
 
 interface NewsSummaryPanelProps {
   articles: NewsArticle[];
@@ -29,12 +30,14 @@ export default function NewsSummaryPanel({
     setError("");
 
     try {
+      const locale = getPreferredLocale();
       const response = await fetch("/api/summarize", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "x-user-locale": locale,
         },
-        body: JSON.stringify({ articles }),
+        body: JSON.stringify({ articles, locale }),
       });
 
       const data = await response.json();

@@ -8,6 +8,8 @@ import { InteractiveGrid } from "./InteractiveGrid";
 import { fetchNews, getPastEvents, getUpcomingEvents } from "@/lib/api";
 import type { NewsArticle, EventAnalysis, UpcomingEvent } from "@/lib/api";
 import { Activity, TrendingUp, Sparkles } from "lucide-react";
+import { useAppLocale } from "@/lib/useAppLocale";
+import { getUICopy } from "@/lib/uiCopy";
 
 interface DashboardProps {
   trackedStocks: string[];
@@ -16,6 +18,8 @@ interface DashboardProps {
 }
 
 export default function Dashboard({ trackedStocks, onRemoveStock, onAddStockClick }: DashboardProps) {
+  const { locale } = useAppLocale();
+  const copy = getUICopy(locale);
   const [news, setNews] = useState<NewsArticle[]>([]);
   const [pastEvents, setPastEvents] = useState<Record<string, EventAnalysis[]>>({});
   const [upcomingEvents, setUpcomingEvents] = useState<Record<string, UpcomingEvent[]>>({});
@@ -71,17 +75,17 @@ export default function Dashboard({ trackedStocks, onRemoveStock, onAddStockClic
           <div className="relative z-10">
             <TrendingUp className="w-16 h-16 text-emerald-400 mx-auto mb-4" />
             <h2 className="font-black text-3xl text-white mb-3 tracking-tight">
-              START <span className="bg-gradient-to-r from-emerald-400 to-green-400 bg-clip-text text-transparent">TRACKING</span>
+              {copy.dashboard.startTracking}
             </h2>
             <p className="text-gray-400 mb-6 text-lg">
-              Add stocks to start tracking events and news
+              {copy.dashboard.startTrackingDesc}
             </p>
             <button
               onClick={onAddStockClick}
               className="flex items-center gap-2 bg-gradient-to-br from-emerald-400 via-green-400 to-teal-400 hover:from-emerald-300 hover:via-green-300 hover:to-teal-300 text-black px-6 py-3 rounded-xl transition-all mx-auto font-bold shadow-[0_8px_24px_rgba(109,212,154,0.4)] hover:shadow-[0_12px_36px_rgba(109,212,154,0.6)]"
             >
               <TrendingUp className="w-5 h-5" />
-              <span className="font-mono font-bold text-lg">ADD YOUR FIRST STOCK</span>
+              <span className="font-mono font-bold text-lg">{copy.dashboard.addFirstStock}</span>
             </button>
           </div>
         </div>
@@ -101,13 +105,13 @@ export default function Dashboard({ trackedStocks, onRemoveStock, onAddStockClic
             >
               <Sparkles className="w-4 h-4" />
               <span className="font-mono font-bold text-base">
-                AI SUMMARY
+                {copy.dashboard.aiSummary}
               </span>
             </button>
             <div className="flex items-center gap-2 bg-white/5 backdrop-blur-xl px-4 py-2 border border-emerald-400/30 rounded-xl shadow-[0_4px_16px_rgba(0,0,0,0.2)]">
               <Activity className="w-4 h-4 text-emerald-400 animate-pulse" />
               <span className="font-mono font-bold text-emerald-400 text-base">
-                {loading ? "LOADING" : "LIVE"}
+                {loading ? copy.dashboard.loading : copy.dashboard.live}
               </span>
             </div>
           </div>
@@ -118,7 +122,7 @@ export default function Dashboard({ trackedStocks, onRemoveStock, onAddStockClic
             <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 via-transparent to-transparent opacity-50" />
             <div className="text-center relative z-10">
               <div className="animate-spin w-8 h-8 border-2 border-emerald-400 border-t-transparent rounded-full mx-auto mb-4"></div>
-              <p className="text-gray-400">Loading data...</p>
+              <p className="text-gray-400">{copy.dashboard.loadingData}</p>
             </div>
           </div>
         )}
@@ -126,7 +130,7 @@ export default function Dashboard({ trackedStocks, onRemoveStock, onAddStockClic
         {/* Tracked Stocks */}
         <div className="mb-6">
           <h2 className="mb-4 font-black text-3xl tracking-tight">
-            TRACKED <span className="bg-gradient-to-r from-emerald-400 to-green-400 bg-clip-text text-transparent">STOCKS</span>
+            {copy.dashboard.trackedStocks}
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {trackedStocks.map((ticker, index) => (

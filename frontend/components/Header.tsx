@@ -4,6 +4,12 @@ import { useState, useEffect } from "react";
 import { Search, TrendingUp, User, LogOut } from "lucide-react";
 import ToroVoiceButton from "./ToroVoiceButton";
 import { supabase } from "@/lib/supabase";
+import { useAppLocale } from "@/lib/useAppLocale";
+import { getUICopy } from "@/lib/uiCopy";
+import {
+  LOCALE_LABELS,
+  SUPPORTED_LOCALES,
+} from "@/lib/locale";
 
 interface HeaderProps {
   onToggleSidebar: () => void;
@@ -12,6 +18,8 @@ interface HeaderProps {
 
 export default function Header({ onToggleSidebar, isSidebarCollapsed }: HeaderProps) {
   const [sessionUser, setSessionUser] = useState<string | null>(null);
+  const { locale, setLocale } = useAppLocale();
+  const copy = getUICopy(locale);
 
   useEffect(() => {
     // Check for Supabase session
@@ -39,6 +47,10 @@ export default function Header({ onToggleSidebar, isSidebarCollapsed }: HeaderPr
       subscription.unsubscribe();
     };
   }, []);
+
+  const handleLocaleChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
+    setLocale(event.target.value);
+  };
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -70,16 +82,29 @@ export default function Header({ onToggleSidebar, isSidebarCollapsed }: HeaderPr
 
           {/* Center Section - Toro Logo */}
           <div className="flex items-center gap-3">
-            <div className="relative">
-              <TrendingUp className="w-7 h-7 text-emerald-400" />
-            </div>
-            <span className="font-black text-2xl tracking-tight bg-gradient-to-r from-emerald-400 to-green-400 bg-clip-text text-transparent">Toro</span>
+            <span className=" font-mono font-black text-3xl tracking-tight bg-gradient-to-r from-emerald-400 to-green-400 bg-clip-text text-transparent">Toro</span>
           </div>
 
           {/* Right Section - Voice Button + Powered by Gemini + Auth */}
           <div className="flex items-center gap-4 border-l border-white/10 pl-4 py-1">
             <ToroVoiceButton />
-            <span className="text-gray-400 text-sm font-medium hidden md:inline-block">Powered by Gemini</span>
+            <span className="text-gray-400 text-sm font-medium hidden md:inline-block">{copy.header.poweredByGemini}</span>
+
+            <label className="hidden lg:flex items-center gap-2 text-xs text-gray-400">
+              <span>{copy.header.language}</span>
+              <select
+                value={locale}
+                onChange={handleLocaleChange}
+                className="bg-black/50 border border-white/10 rounded-md px-2 py-1 text-xs text-white focus:outline-none focus:ring-1 focus:ring-emerald-500/60"
+                aria-label="Select language"
+              >
+                {SUPPORTED_LOCALES.map((locale) => (
+                  <option key={locale} value={locale}>
+                    {LOCALE_LABELS[locale]}
+                  </option>
+                ))}
+              </select>
+            </label>
 
             {sessionUser ? (
               <div className="flex items-center gap-3 bg-white/5 backdrop-blur-sm border border-white/10 rounded-lg px-3 py-1.5 ml-2 shadow-[0_4px_16px_rgba(0,0,0,0.2)]">
@@ -94,7 +119,7 @@ export default function Header({ onToggleSidebar, isSidebarCollapsed }: HeaderPr
                 <button
                   onClick={handleLogout}
                   className="text-gray-500 hover:text-emerald-400 transition-colors ml-1 border-l border-white/10 pl-3"
-                  title="Sign out"
+                  title={copy.header.signOut}
                 >
                   <LogOut className="w-4 h-4" />
                 </button>
@@ -105,13 +130,13 @@ export default function Header({ onToggleSidebar, isSidebarCollapsed }: HeaderPr
                   href="/login"
                   className="text-gray-300 hover:text-white font-medium px-3 py-2 rounded-lg text-sm transition-colors bg-white/5 backdrop-blur-sm border border-white/10"
                 >
-                  Log In
+                  {copy.header.logIn}
                 </a>
                 <a
                   href="/signup"
                   className="bg-gradient-to-br from-emerald-400 to-green-500 hover:from-emerald-300 hover:to-green-400 text-black font-semibold px-4 py-2 rounded-lg text-sm transition-all shadow-[0_4px_16px_rgba(109,212,154,0.3)]"
                 >
-                  Sign Up
+                  {copy.header.signUp}
                 </a>
               </div>
             )}

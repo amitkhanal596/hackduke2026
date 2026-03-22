@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
+import { normalizeLocale } from "@/lib/locale";
 
 export async function POST(request: NextRequest) {
   try {
-    const { message, session_id } = await request.json();
+    const { message, session_id, locale } = await request.json();
 
     if (!message || typeof message !== "string") {
       return NextResponse.json(
@@ -11,6 +12,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const normalizedLocale = normalizeLocale(
+      locale || request.headers.get("x-user-locale") || "en-US",
+    );
+
     const backendBaseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
     const authorization = request.headers.get("authorization");
 
@@ -18,11 +23,13 @@ export async function POST(request: NextRequest) {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        "x-user-locale": normalizedLocale,
         ...(authorization ? { Authorization: authorization } : {}),
       },
       body: JSON.stringify({
         message,
         session_id,
+        locale: normalizedLocale,
       }),
     });
 

@@ -3,8 +3,12 @@
 import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Volume2, VolumeX, Square, Play, Pause } from 'lucide-react';
+import { useAppLocale } from '@/lib/useAppLocale';
+import { getUICopy } from '@/lib/uiCopy';
 
 const VoiceNewsButton = () => {
+  const { locale } = useAppLocale();
+  const copy = getUICopy(locale);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [hasPlayed, setHasPlayed] = useState(false);
@@ -253,7 +257,7 @@ const VoiceNewsButton = () => {
           ) : (
             <Play className="w-8 h-8" />
           )}
-          {isLoading ? 'Generating...' : isPlaying && !isPaused ? 'Pause' : isPlaying && isPaused ? 'Resume' : audioUrlRef.current ? 'Play' : 'The Scoop'}
+          {isLoading ? copy.voiceNews.generating : isPlaying && !isPaused ? copy.voiceNews.pause : isPlaying && isPaused ? copy.voiceNews.resume : audioUrlRef.current ? copy.voiceNews.play : copy.voiceNews.theScoop}
         </Button>
 
         {/* Stop Button */}
@@ -267,7 +271,7 @@ const VoiceNewsButton = () => {
             }}
           >
             <Square className="w-7 h-7" />
-            Stop
+            {copy.voiceNews.stop}
           </Button>
         )}
 
@@ -283,7 +287,7 @@ const VoiceNewsButton = () => {
             }}
           >
             <Volume2 className="w-7 h-7" />
-            Generate New
+            {copy.voiceNews.generateNew}
           </Button>
         )}
       </div>
@@ -305,6 +309,8 @@ const VoiceNewsButton = () => {
               max={duration || 0}
               value={currentTime}
               onChange={handleSeek}
+              aria-label="Audio progress"
+              title="Audio progress"
               className="w-full h-3 bg-gray-700 rounded-lg appearance-none cursor-pointer slider"
               style={{
                 background: `linear-gradient(to right, #10B981 0%, #10B981 ${(currentTime / duration) * 100}%, #374151 ${(currentTime / duration) * 100}%, #374151 100%)`
@@ -338,7 +344,7 @@ const VoiceNewsButton = () => {
       {/* Transcript Display */}
       {transcript && (
         <div className="mt-8">
-          <h3 className="text-2xl font-bold text-white mb-4 text-center">Transcript</h3>
+          <h3 className="text-2xl font-bold text-white mb-4 text-center">{copy.voiceNews.transcript}</h3>
           <div 
             className="bg-black/40 backdrop-blur-sm border-white/10 rounded-lg p-6 max-h-96 overflow-y-auto"
             style={{

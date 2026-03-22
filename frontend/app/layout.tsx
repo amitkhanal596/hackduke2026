@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import LocaleBootstrap from "@/components/LocaleBootstrap";
 
 export const metadata: Metadata = {
   title: "Toro - Smart Financial Event Tracker",
@@ -14,6 +15,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className="antialiased" suppressHydrationWarning>
+        <LocaleBootstrap />
         {children}
       </body>
     </html>

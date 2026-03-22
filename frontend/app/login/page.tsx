@@ -7,8 +7,12 @@ import { Button } from "@/components/ui/button";
 import { TrendingUp, Lock } from "lucide-react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
+import { useAppLocale } from "@/lib/useAppLocale";
+import { getUICopy } from "@/lib/uiCopy";
 
 export default function LoginPage() {
+  const { locale } = useAppLocale();
+  const copy = getUICopy(locale);
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -35,7 +39,7 @@ export default function LoginPage() {
         router.push("/");
       }
     } catch (err: any) {
-      setError(err.message || "An error occurred during login");
+      setError(err.message || copy.auth.loginErrorFallback);
     } finally {
       setIsLoading(false);
     }
@@ -57,10 +61,10 @@ export default function LoginPage() {
             </div>
           </div>
           <h1 className="text-3xl font-bold tracking-tight text-white mb-2">
-            Welcome back
+            {copy.auth.welcomeBack}
           </h1>
           <p className="text-gray-400 text-sm">
-            Access your Toro portfolio and AI-driven insights.
+            {copy.auth.loginSubtitle}
           </p>
         </div>
 
@@ -73,7 +77,7 @@ export default function LoginPage() {
 
           <div>
             <label className="block text-xs font-medium text-gray-400 mb-1.5 uppercase tracking-wider">
-              Email Address
+              {copy.auth.emailAddress}
             </label>
             <input
               type="email"
@@ -88,9 +92,9 @@ export default function LoginPage() {
           <div>
             <div className="flex justify-between items-baseline mb-1.5">
               <label className="block text-xs font-medium text-gray-400 uppercase tracking-wider">
-                Password
+                {copy.auth.password}
               </label>
-              <a href="#" className="text-xs text-gray-500 hover:text-emerald-400 transition-colors">Forgot password?</a>
+              <a href="#" className="text-xs text-gray-500 hover:text-emerald-400 transition-colors">{copy.auth.forgotPassword}</a>
             </div>
             <input
               type="password"
@@ -110,19 +114,19 @@ export default function LoginPage() {
             {isLoading ? (
               <span className="flex items-center space-x-2">
                 <div className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin"></div>
-                <span>Authenticating...</span>
+                <span>{copy.auth.authenticating}</span>
               </span>
             ) : (
               <span className="flex items-center gap-2">
                 <Lock className="w-4 h-4" />
-                Sign In
+                {copy.auth.signIn}
               </span>
             )}
           </Button>
         </form>
 
         <div className="mt-8 text-center text-sm text-gray-500">
-          Don't have an account? <Link href="/signup" className="text-white font-medium hover:text-emerald-400 transition-colors">Sign up</Link>
+          {copy.auth.noAccount} <Link href="/signup" className="text-white font-medium hover:text-emerald-400 transition-colors">{copy.auth.signUp}</Link>
         </div>
       </div>
     </div>

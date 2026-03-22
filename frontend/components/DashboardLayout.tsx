@@ -15,6 +15,8 @@ import ShootingStarsOverlay from "./ShootingStarsOverlay";
 import { stockList } from "@/lib/stockList";
 import type { NewsArticle } from "@/lib/api";
 import { X } from "lucide-react";
+import { useAppLocale } from "@/lib/useAppLocale";
+import { getUICopy } from "@/lib/uiCopy";
 
 interface DashboardLayoutProps {
   trackedStocks: string[];
@@ -29,6 +31,8 @@ export default function DashboardLayout({
   onRemoveStock,
   onChatVisibilityChange
 }: DashboardLayoutProps) {
+  const { locale } = useAppLocale();
+  const copy = getUICopy(locale);
   const [activeSection, setActiveSection] = useState("dashboard");
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
@@ -105,17 +109,17 @@ export default function DashboardLayout({
                   textShadow: '0 0 10px rgba(255, 255, 255, 0.15), 0 0 20px rgba(255, 255, 255, 0.08)'
                 }}
               >
-                ADD <span 
+                <span 
                   className="text-gradient-green"
                   style={{
                     textShadow: '0 0 10px rgba(16, 185, 129, 0.2), 0 0 20px rgba(16, 185, 129, 0.1)'
                   }}
                 >
-                  STOCKS
+                  {copy.dashboardLayout.addStocksTitle}
                 </span>
               </h1>
               <p className="text-gray-400 text-lg">
-                Search and add stocks to your tracking portfolio
+                {copy.dashboardLayout.addStocksDesc}
               </p>
             </div>
             <AddStockForm onAddStock={onAddStock} stockList={stockList} />
@@ -131,17 +135,17 @@ export default function DashboardLayout({
                   textShadow: '0 0 10px rgba(255, 255, 255, 0.15), 0 0 20px rgba(255, 255, 255, 0.08)'
                 }}
               >
-                NEWS <span 
+                <span 
                   className="text-gradient-green"
                   style={{
                     textShadow: '0 0 10px rgba(16, 185, 129, 0.2), 0 0 20px rgba(16, 185, 129, 0.1)'
                   }}
                 >
-                  FEED
+                  {copy.dashboardLayout.newsFeedTitle}
                 </span>
               </h1>
               <p className="text-gray-400 text-lg">
-                Latest market news and analysis for your tracked stocks
+                {copy.dashboardLayout.newsFeedDesc}
               </p>
             </div>
             <NewsFeedForStocks
@@ -160,17 +164,17 @@ export default function DashboardLayout({
                   textShadow: '0 0 10px rgba(255, 255, 255, 0.15), 0 0 20px rgba(255, 255, 255, 0.08)'
                 }}
               >
-                AI <span
+                <span
                   className="text-gradient-green"
                   style={{
                     textShadow: '0 0 10px rgba(16, 185, 129, 0.2), 0 0 20px rgba(16, 185, 129, 0.1)'
                   }}
                 >
-                  CHAT
+                  {copy.dashboardLayout.aiChatTitle}
                 </span>
               </h1>
               <p className="text-gray-400 text-lg">
-                Chat with WealthVisor AI for market insights
+                {copy.dashboardLayout.aiChatDesc}
               </p>
             </div>
             <AgentChat />
@@ -186,17 +190,17 @@ export default function DashboardLayout({
                   textShadow: '0 0 10px rgba(255, 255, 255, 0.15), 0 0 20px rgba(255, 255, 255, 0.08)'
                 }}
               >
-                VOICE <span 
+                <span 
                   className="text-gradient-green"
                   style={{
                     textShadow: '0 0 10px rgba(16, 185, 129, 0.2), 0 0 20px rgba(16, 185, 129, 0.1)'
                   }}
                 >
-                  NEWS
+                  {copy.dashboardLayout.voiceNewsTitle}
                 </span>
               </h1>
               <p className="text-gray-400 text-lg">
-                Listen to AI-generated market commentary
+                {copy.dashboardLayout.voiceNewsDesc}
               </p>
             </div>
             <div className="flex justify-center">
@@ -289,7 +293,7 @@ export default function DashboardLayout({
             >
               {/* Header */}
               <div className="flex items-center justify-between p-4 border-b border-white/10 bg-gradient-to-r from-purple/20 to-green/20">
-                <h3 className="font-bold text-lg text-white">AI Sentiment Analysis</h3>
+                <h3 className="font-bold text-lg text-white">{copy.dashboardLayout.sentimentAnalysis}</h3>
                 <button
                   onClick={handleCloseChat}
                   className="p-2 hover:bg-white/10 rounded-lg transition-colors text-gray-400 hover:text-white"
@@ -303,7 +307,7 @@ export default function DashboardLayout({
                 <AgentChat
                   initialMessage={chatInitialMessage}
                   autoSend={true}
-                  placeholder="Ask about this article..."
+                  placeholder={copy.dashboardLayout.askArticle}
                 />
               </div>
             </div>

@@ -13,6 +13,8 @@ import {
   Menu,
   X
 } from "lucide-react";
+import { useAppLocale } from "@/lib/useAppLocale";
+import { getUICopy } from "@/lib/uiCopy";
 
 interface SidebarProps {
   activeSection: string;
@@ -27,36 +29,39 @@ export default function Sidebar({
   isCollapsed, 
   onToggleCollapse 
 }: SidebarProps) {
+  const { locale } = useAppLocale();
+  const copy = getUICopy(locale);
+
   const navigationItems = [
     {
       id: "dashboard",
-      label: "Dashboard",
+      label: copy.sidebar.dashboard,
       icon: BarChart3,
-      description: "Overview & Analytics"
+      description: copy.sidebar.dashboardDesc
     },
     {
       id: "add-stocks",
-      label: "Add Stocks",
+      label: copy.sidebar.addStocks,
       icon: Plus,
-      description: "Track New Stocks"
+      description: copy.sidebar.addStocksDesc
     },
     {
       id: "news",
-      label: "News Feed",
+      label: copy.sidebar.newsFeed,
       icon: Newspaper,
-      description: "Market News"
+      description: copy.sidebar.newsFeedDesc
     },
     {
       id: "chat",
-      label: "AI Chat",
+      label: copy.sidebar.aiChat,
       icon: MessageSquare,
-      description: "WealthVisor AI"
+      description: copy.sidebar.aiChatDesc
     },
     {
       id: "voice-news",
-      label: "Voice News",
+      label: copy.sidebar.voiceNews,
       icon: Volume2,
-      description: "Audio Commentary"
+      description: copy.sidebar.voiceNewsDesc
     }
   ];
 
@@ -114,7 +119,7 @@ export default function Sidebar({
                     textShadow: '0 0 10px rgba(255, 255, 255, 0.3), 0 0 20px rgba(255, 255, 255, 0.2), 0 0 30px rgba(255, 255, 255, 0.1)'
                   }}
                 >
-                  Menu
+                  {copy.sidebar.menu}
                 </span>
               </motion.div>
             )}
@@ -188,7 +193,7 @@ export default function Sidebar({
             >
               <button className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-white/10 text-gray-300 hover:text-white transition-colors">
                 <Settings className="w-5 h-5 flex-shrink-0" />
-                <span className="font-semibold text-base">Settings</span>
+                <span className="font-semibold text-base">{copy.sidebar.settings}</span>
               </button>
             </motion.div>
           )}

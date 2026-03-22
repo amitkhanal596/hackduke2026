@@ -249,7 +249,7 @@ export default function WealthVisorChat({ hideButton = false }: WealthVisorChatP
                 [WEALTHVISOR_INITIALIZED]
               </p>
               <p className="text-gray-500 text-sm font-mono max-w-sm">
-                > Ask me about markets, stocks, investments, or financial strategies
+                &gt; Ask me about markets, stocks, investments, or financial strategies
               </p>
             </div>
           </div>

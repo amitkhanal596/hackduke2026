@@ -7,8 +7,12 @@ import { Button } from "@/components/ui/button";
 import { TrendingUp, UserPlus } from "lucide-react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
+import { useAppLocale } from "@/lib/useAppLocale";
+import { getUICopy } from "@/lib/uiCopy";
 
 export default function SignupPage() {
+  const { locale } = useAppLocale();
+  const copy = getUICopy(locale);
   const router = useRouter();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -39,14 +43,14 @@ export default function SignupPage() {
         // Check if email confirmation is required
         if (data.user.identities && data.user.identities.length === 0) {
           // User already exists
-          setError("An account with this email already exists. Please log in.");
+          setError(copy.auth.accountExists);
         } else {
           // Show confirmation message
           setShowConfirmation(true);
         }
       }
     } catch (err: any) {
-      setError(err.message || "An error occurred during signup");
+      setError(err.message || copy.auth.signupErrorFallback);
     } finally {
       setIsLoading(false);
     }
@@ -75,24 +79,24 @@ export default function SignupPage() {
             </div>
 
             <h1 className="text-2xl font-bold tracking-tight text-white mb-3">
-              Check your email
+              {copy.auth.checkEmail}
             </h1>
 
             <p className="text-gray-400 text-sm mb-6 leading-relaxed">
-              We've sent a confirmation email to <span className="text-white font-medium">{email}</span>.
-              Please click the link in the email to verify your account.
+              {copy.auth.confirmationLine1} <span className="text-white font-medium">{email}</span>.
+              {" "}{copy.auth.confirmationLine2}
             </p>
 
             <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-lg px-4 py-3 text-emerald-400 text-sm mb-6">
-              <p className="font-medium mb-1">Important</p>
-              <p className="text-xs text-emerald-300/80">Check your spam folder if you don't see the email within a few minutes.</p>
+              <p className="font-medium mb-1">{copy.auth.important}</p>
+              <p className="text-xs text-emerald-300/80">{copy.auth.spamHint}</p>
             </div>
 
             <Link
               href="/login"
               className="inline-block bg-emerald-500 hover:bg-emerald-400 text-black font-semibold px-6 py-3 rounded-lg transition-all"
             >
-              Go to Login
+              {copy.auth.goToLogin}
             </Link>
           </div>
         ) : (
@@ -105,10 +109,10 @@ export default function SignupPage() {
                 </div>
               </div>
               <h1 className="text-3xl font-bold tracking-tight text-white mb-2">
-                Create an account
+                {copy.auth.createAccount}
               </h1>
               <p className="text-gray-400 text-sm">
-                Join Toro to elevate your personal wealth management.
+                {copy.auth.signupSubtitle}
               </p>
             </div>
 
@@ -121,7 +125,7 @@ export default function SignupPage() {
 
           <div>
             <label className="block text-xs font-medium text-gray-400 mb-1.5 uppercase tracking-wider">
-              Full Name
+              {copy.auth.fullName}
             </label>
             <input
               type="text"
@@ -135,7 +139,7 @@ export default function SignupPage() {
 
           <div>
             <label className="block text-xs font-medium text-gray-400 mb-1.5 uppercase tracking-wider">
-              Email Address
+              {copy.auth.emailAddress}
             </label>
             <input
               type="email"
@@ -149,7 +153,7 @@ export default function SignupPage() {
 
           <div>
             <label className="block text-xs font-medium text-gray-400 mb-1.5 uppercase tracking-wider">
-              Password
+              {copy.auth.password}
             </label>
             <input
               type="password"
@@ -169,19 +173,19 @@ export default function SignupPage() {
             {isLoading ? (
               <span className="flex items-center space-x-2">
                 <div className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin"></div>
-                <span>Creating Account...</span>
+                <span>{copy.auth.creatingAccount}</span>
               </span>
             ) : (
               <span className="flex items-center gap-2">
                 <UserPlus className="w-4 h-4" />
-                Sign Up
+                {copy.auth.signUp}
               </span>
             )}
           </Button>
             </form>
 
             <div className="mt-8 text-center text-sm text-gray-500">
-              Already have an account? <Link href="/login" className="text-white font-medium hover:text-emerald-400 transition-colors">Log in</Link>
+              {copy.auth.alreadyHaveAccount} <Link href="/login" className="text-white font-medium hover:text-emerald-400 transition-colors">{copy.auth.logIn}</Link>
             </div>
           </>
         )}

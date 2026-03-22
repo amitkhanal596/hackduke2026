@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { supabase } from './supabase';
+import { getPreferredLocale } from './locale';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -16,6 +17,12 @@ api.interceptors.request.use(async (config) => {
 
   if (session?.access_token) {
     config.headers.Authorization = `Bearer ${session.access_token}`;
+  }
+
+  if (typeof window !== 'undefined') {
+    const locale = getPreferredLocale();
+    config.headers = config.headers || {};
+    (config.headers as any)['x-user-locale'] = locale;
   }
 
   return config;
@@ -95,22 +102,31 @@ export const removeTicker = async (ticker: string) => {
 };
 
 export const fetchNews = async (tickers: string[]) => {
-  const response = await api.post<NewsArticle[]>('/fetch_news', { tickers });
+  const response = await api.post<NewsArticle[]>('/fetch_news', {
+    tickers,
+    locale: getPreferredLocale(),
+  });
   return response.data;
 };
 
 export const analyzeEvent = async (ticker: string, date: string) => {
-  const response = await api.post<EventAnalysis>('/analyze_event', { ticker, date });
+  const response = await api.post<EventAnalysis>('/analyze_event', {
+    ticker,
+    date,
+    locale: getPreferredLocale(),
+  });
   return response.data;
 };
 
 export const getPastEvents = async (ticker: string) => {
-  const response = await api.get<EventAnalysis[]>(`/events/past?ticker=${ticker}`);
+  const locale = getPreferredLocale();
+  const response = await api.get<EventAnalysis[]>(`/events/past?ticker=${ticker}&locale=${encodeURIComponent(locale)}`);
   return response.data;
 };
 
 export const getUpcomingEvents = async (ticker: string) => {
-  const response = await api.get<UpcomingEvent[]>(`/events/upcoming?ticker=${ticker}`);
+  const locale = getPreferredLocale();
+  const response = await api.get<UpcomingEvent[]>(`/events/upcoming?ticker=${ticker}&locale=${encodeURIComponent(locale)}`);
   return response.data;
 };
 
@@ -125,12 +141,16 @@ export const getChartData = async (ticker: string, period: string) => {
 };
 
 export const getBullBearAnalysis = async (ticker: string) => {
-  const response = await api.get<BullBearAnalysis>(`/analyze/bull-bear/${ticker}`);
+  const locale = getPreferredLocale();
+  const response = await api.get<BullBearAnalysis>(`/analyze/bull-bear/${ticker}?locale=${encodeURIComponent(locale)}`);
   return response.data;
 };
 
 export const explainSentiment = async (article: NewsArticle) => {
-  const response = await api.post<{ session_id: string; reply: string }>('/agent/explain-sentiment', { article });
+  const response = await api.post<{ session_id: string; reply: string }>('/agent/explain-sentiment', {
+    article,
+    locale: getPreferredLocale(),
+  });
   return response.data;
 };
 

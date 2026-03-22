@@ -7,6 +7,7 @@ from datetime import datetime, timedelta
 import os
 import time
 import random
+import hashlib
 from dotenv import load_dotenv, find_dotenv
 from supabase import create_client, Client
 
@@ -147,6 +148,7 @@ class ChartData(BaseModel):
 class ChatRequest(BaseModel):
     message: str
     session_id: Optional[str] = None
+    locale: Optional[str] = None
 
 class ChatResponse(BaseModel):
     session_id: str
@@ -154,6 +156,7 @@ class ChatResponse(BaseModel):
 
 class SentimentExplanationRequest(BaseModel):
     article: NewsArticle
+    locale: Optional[str] = None
 
 class VoiceNewsRequest(BaseModel):
     text: Optional[str] = None
@@ -165,8 +168,112 @@ class BullBearAnalysis(BaseModel):
     bear_percentage: int
     analysis: str
 
+
+SUPPORTED_LOCALES = {
+    "en-us": "en-US",
+    "en": "en-US",
+    "es": "es",
+    "es-es": "es",
+    "es-us": "es",
+    "hi": "hi",
+    "hi-in": "hi",
+    "fr": "fr",
+    "fr-fr": "fr",
+    "de": "de",
+    "de-de": "de",
+    "ar": "ar",
+    "ar-sa": "ar",
+    "ar-eg": "ar",
+    "pt": "pt-BR",
+    "pt-br": "pt-BR",
+    "ja": "ja",
+    "ja-jp": "ja",
+    "zh": "zh-CN",
+    "zh-cn": "zh-CN",
+}
+
+LOCALE_LANGUAGE_NAME = {
+    "es": "Spanish",
+    "hi": "Hindi",
+    "fr": "French",
+    "de": "German",
+    "ar": "Arabic",
+    "pt-BR": "Brazilian Portuguese",
+    "ja": "Japanese",
+    "zh-CN": "Simplified Chinese",
+}
+
+TRANSLATION_CACHE_TTL_SECONDS = 15 * 60
+translation_cache: Dict[str, Dict[str, str]] = {}
+
+
+def normalize_locale(locale: Optional[str]) -> str:
+    if not locale:
+        return "en-US"
+
+    normalized = locale.strip().lower()
+    if normalized in SUPPORTED_LOCALES:
+        return SUPPORTED_LOCALES[normalized]
+
+    language_code = normalized.split("-")[0]
+    return SUPPORTED_LOCALES.get(language_code, "en-US")
+
+
+def should_translate(locale: str) -> bool:
+    return normalize_locale(locale) != "en-US"
+
+
+def get_translation_cache_key(text: str, locale: str, content_type: str) -> str:
+    digest = hashlib.sha256(text.encode("utf-8")).hexdigest()
+    return f"{content_type}:{normalize_locale(locale)}:{digest}:gemini-2.5-flash"
+
+
+def translate_text_with_gemini(text: str, locale: str, content_type: str = "general") -> str:
+    target_locale = normalize_locale(locale)
+    if not text or not should_translate(target_locale):
+        return text
+
+    language_name = LOCALE_LANGUAGE_NAME.get(target_locale)
+    if not language_name:
+        return text
+
+    cache_key = get_translation_cache_key(text, target_locale, content_type)
+    now = int(time.time())
+    cached = translation_cache.get(cache_key)
+    if cached and int(cached.get("expires_at", "0")) > now:
+        return cached.get("text", text)
+
+    try:
+        translate_prompt = (
+            f"Translate the following financial content into {language_name}.\n"
+            "Rules:\n"
+            "- Preserve tickers, numbers, dates, currency values, and percentages exactly\n"
+            "- Preserve markdown structure and bullets where present\n"
+            "- Do not add or remove investment advice\n"
+            "- Return only the translated text\n\n"
+            f"Content:\n{text}"
+        )
+
+        response = gemini_client.models.generate_content(
+            model='gemini-2.5-flash',
+            contents=translate_prompt
+        )
+
+        translated_text = (response.text or "").strip()
+        if not translated_text:
+            return text
+
+        translation_cache[cache_key] = {
+            "text": translated_text,
+            "expires_at": str(now + TRANSLATION_CACHE_TTL_SECONDS),
+        }
+        return translated_text
+    except Exception as e:
+        print(f"Translation failed for locale {target_locale}: {e}")
+        return text
+
 @app.get("/analyze/bull-bear/{ticker}", response_model=BullBearAnalysis)
-async def analyze_bull_bear(ticker: str):
+async def analyze_bull_bear(ticker: str, locale: Optional[str] = None):
     """
     Toro Proprietary Quant Engine: Multi-Factor Sentiment Analysis
     Combines Wall Street Analyst consensus, real-time news sentiment, 
@@ -289,20 +396,33 @@ Key Factors:
 • News Sentiment: {news_score}/100
 • Price Momentum: {momentum_score}/100"""
 
+        localized_analysis = translate_text_with_gemini(
+            analysis_part,
+            normalize_locale(locale),
+            content_type="bull-bear"
+        )
+
         return BullBearAnalysis(
             ticker=ticker_upper,
             bull_percentage=final_bull_pct,
             bear_percentage=final_bear_pct,
-            analysis=analysis_part
+            analysis=localized_analysis
         )
 
     except Exception as e:
         print(f"Error in bull/bear quant engine: {e}")
+        failure_message = f"Engine failure due to technical constraint: {str(e)}"
+        localized_failure = translate_text_with_gemini(
+            failure_message,
+            normalize_locale(locale),
+            content_type="bull-bear-error"
+        )
+
         return BullBearAnalysis(
             ticker=ticker,
             bull_percentage=50,
             bear_percentage=50,
-            analysis=f"Engine failure due to technical constraint: {str(e)}"
+            analysis=localized_failure
         )
 
 @app.get("/")
@@ -400,8 +520,9 @@ def fetch_finnhub_context(ticker: str, api_key: str) -> str:
 
 
 @app.post("/agent/chat", response_model=ChatResponse)
-async def agent_chat(req: ChatRequest) -> ChatResponse:
+async def agent_chat(req: ChatRequest, x_user_locale: Optional[str] = Header(None)) -> ChatResponse:
     try:
+        target_locale = normalize_locale(req.locale or x_user_locale)
         message = req.message
         finnhub_key = os.getenv("FINNHUB_API_KEY")
         if finnhub_key:
@@ -412,13 +533,15 @@ async def agent_chat(req: ChatRequest) -> ChatResponse:
                 if context:
                     message = message + context
         result = agent.chat(message=message, session_id=req.session_id)
-        return ChatResponse(session_id=result["session_id"], reply=result["reply"])
+        localized_reply = translate_text_with_gemini(result["reply"], target_locale, content_type="chat")
+        return ChatResponse(session_id=result["session_id"], reply=localized_reply)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/agent/explain-sentiment", response_model=ChatResponse)
-async def explain_sentiment(req: SentimentExplanationRequest) -> ChatResponse:
+async def explain_sentiment(req: SentimentExplanationRequest, x_user_locale: Optional[str] = Header(None)) -> ChatResponse:
     try:
+        target_locale = normalize_locale(req.locale or x_user_locale)
         article = req.article
         prompt = f"""Analyze this financial news article and explain why it has been classified as '{article.sentiment}' sentiment.
 
@@ -438,7 +561,8 @@ Please provide a detailed explanation covering:
 Keep your response concise, professional, and focused on sentiment analysis."""
 
         result = agent.chat(message=prompt, session_id=None)
-        return ChatResponse(session_id=result["session_id"], reply=result["reply"])
+        localized_reply = translate_text_with_gemini(result["reply"], target_locale, content_type="sentiment")
+        return ChatResponse(session_id=result["session_id"], reply=localized_reply)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -975,7 +1099,7 @@ async def get_chart_data(ticker: str, period: str) -> ChartData:
         logging.error(f"Error fetching chart data for {ticker} - {period}: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error fetching chart data: {str(e)}")
 
-async def generate_ai_insights(tracked_stocks: List[str], stock_data: List[Dict]) -> str:
+async def generate_ai_insights(tracked_stocks: List[str], stock_data: List[Dict], locale: str = "en-US") -> str:
     """Generate AI insights about tracked stocks using Gemini"""
     try:
         if not tracked_stocks or not stock_data:
@@ -1020,7 +1144,7 @@ async def generate_ai_insights(tracked_stocks: List[str], stock_data: List[Dict]
         if len(sentences) > 2:
             insights = '. '.join(sentences[:2]) + '.'
 
-        return insights
+        return translate_text_with_gemini(insights, locale, content_type="insights")
 
     except Exception as e:
         print(f"Error generating AI insights: {e}")
