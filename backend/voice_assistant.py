@@ -12,11 +12,15 @@ Flow:
 """
 
 import os
+import re
 import json
 import time
 import tempfile
 import threading
 from pathlib import Path
+from datetime import datetime, timedelta
+
+import requests
 
 import pygame
 import speech_recognition as sr
@@ -46,6 +50,66 @@ SYSTEM_PROMPT = (
 
 # ── ANSI colours ─────────────────────────────────────────────────────────────
 G = "\033[92m"; Y = "\033[93m"; B = "\033[94m"; R = "\033[91m"; X = "\033[0m"
+
+
+# ── Finnhub stock context ─────────────────────────────────────────────────────
+from ticker_bank import resolve_tickers
+
+_TICKER_EXCLUDE = {
+    'I', 'A', 'AI', 'US', 'USD', 'API', 'ETF', 'IPO', 'CEO', 'CFO', 'COO',
+    'PE', 'EPS', 'ROI', 'GDP', 'CPI', 'FED', 'SEC', 'NYSE', 'NASDAQ',
+    'AM', 'PM', 'OK', 'IT', 'OR', 'IF', 'IN', 'AT', 'BY', 'TO', 'ON',
+    'JP', 'EU', 'UK', 'CA', 'MY', 'ME', 'HE', 'SHE', 'THE', 'AND', 'FOR',
+    'ARE', 'NOT', 'BUT', 'ALL', 'ANY', 'CAN', 'HAS', 'HAD', 'ITS', 'LET',
+    'NEW', 'NOW', 'OLD', 'OWN', 'WAY', 'WHO', 'WHY', 'HOW', 'TOP',
+}
+
+def _extract_tickers(text: str):
+    return resolve_tickers(text, _TICKER_EXCLUDE)
+
+def _fetch_finnhub_context(ticker: str, api_key: str) -> str:
+    base = "https://finnhub.io/api/v1"
+    parts = []
+    try:
+        q = requests.get(f"{base}/quote", params={"symbol": ticker, "token": api_key}, timeout=5).json()
+        if q.get("c"):
+            parts.append(
+                f"Price: ${q['c']:.2f}, change {q.get('dp', 0):+.2f}% today"
+                f" (open ${q['o']:.2f}, high ${q['h']:.2f}, low ${q['l']:.2f})"
+            )
+    except Exception:
+        pass
+    try:
+        p = requests.get(f"{base}/stock/profile2", params={"symbol": ticker, "token": api_key}, timeout=5).json()
+        if p.get("name"):
+            parts.append(f"{p['name']}, {p.get('finnhubIndustry','')}, market cap ${p.get('marketCapitalization',0):,.0f}M")
+    except Exception:
+        pass
+    try:
+        m = requests.get(f"{base}/stock/metric", params={"symbol": ticker, "metric": "all", "token": api_key}, timeout=5).json().get("metric", {})
+        metrics = []
+        if m.get("peBasicExclExtraTTM"):     metrics.append(f"P/E {m['peBasicExclExtraTTM']:.1f}")
+        if m.get("52WeekHigh"):              metrics.append(f"52W high ${m['52WeekHigh']:.2f}")
+        if m.get("52WeekLow"):               metrics.append(f"52W low ${m['52WeekLow']:.2f}")
+        if m.get("epsBasicExclExtraItemsTTM"): metrics.append(f"EPS ${m['epsBasicExclExtraItemsTTM']:.2f}")
+        if m.get("revenueGrowthTTMYoy"):     metrics.append(f"revenue growth {m['revenueGrowthTTMYoy']:.1f}% YoY")
+        if m.get("netMarginTTM"):            metrics.append(f"net margin {m['netMarginTTM']:.1f}%")
+        if metrics:
+            parts.append(", ".join(metrics))
+    except Exception:
+        pass
+    try:
+        from_date = (datetime.now() - timedelta(days=3)).strftime("%Y-%m-%d")
+        to_date   = datetime.now().strftime("%Y-%m-%d")
+        news = requests.get(f"{base}/company-news", params={"symbol": ticker, "from": from_date, "to": to_date, "token": api_key}, timeout=5).json()
+        headlines = [item["headline"] for item in news[:4] if item.get("headline")]
+        if headlines:
+            parts.append("Recent news: " + "; ".join(headlines))
+    except Exception:
+        pass
+    if not parts:
+        return ""
+    return f"\n[Live data for {ticker}: " + " | ".join(parts) + "]"
 
 
 # ── helpers ───────────────────────────────────────────────────────────────────
@@ -255,10 +319,21 @@ class ToroAssistant:
             self._set_state("idle")
             return
 
-        print(f"{B}┌─ Sending to Gemini (gemini-1.5-flash)…{X}")
+        # Enrich with live Finnhub data for any tickers mentioned
+        finnhub_key = os.getenv("FINNHUB_API_KEY")
+        enriched = request
+        if finnhub_key:
+            tickers = _extract_tickers(request)
+            for ticker in tickers:
+                ctx = _fetch_finnhub_context(ticker, finnhub_key)
+                if ctx:
+                    print(f"{G}[Finnhub] Injecting data for {ticker}{X}")
+                    enriched += ctx
+
+        print(f"{B}┌─ Sending to Gemini (gemini-2.5-flash)…{X}")
         t0 = time.time()
 
-        self.history.append({"role": "user", "parts": [{"text": request}]})
+        self.history.append({"role": "user", "parts": [{"text": enriched}]})
         trimmed = self.history[-10:]
 
         messages = []
@@ -273,7 +348,7 @@ class ToroAssistant:
 
         try:
             response = self.gemini.models.generate_content(
-                model="gemini-1.5-flash",
+                model="gemini-2.5-flash",
                 contents=messages,
                 config={"temperature": 0.7},
             )
@@ -320,23 +395,24 @@ class ToroAssistant:
         pygame.mixer.music.play()
 
         # Only now does the mic open to listen for the stop word
-        while pygame.mixer.music.get_busy() and not self._stop_flag.is_set():
-            try:
-                audio = self.rec.listen(src, timeout=0.8, phrase_time_limit=2)
-                heard = self._stt(audio)
-                if heard:
-                    print(f"       [stop listener] → \"{heard}\"")
-                if STOP_WORD in heard:
-                    print(f"{R}[Speaking] \"{STOP_WORD}\" detected — stopping.{X}")
-                    self._stop_flag.set()
-            except sr.WaitTimeoutError:
-                pass
-
-        pygame.mixer.music.stop()
         try:
-            os.unlink(tmp)
-        except OSError:
-            pass
+            while pygame.mixer.music.get_busy() and not self._stop_flag.is_set():
+                try:
+                    audio = self.rec.listen(src, timeout=0.8, phrase_time_limit=2)
+                    heard = self._stt(audio)
+                    if heard:
+                        print(f"       [stop listener] → \"{heard}\"")
+                    if STOP_WORD in heard:
+                        print(f"{R}[Speaking] \"{STOP_WORD}\" detected — stopping.{X}")
+                        self._stop_flag.set()
+                except sr.WaitTimeoutError:
+                    pass
+        finally:
+            pygame.mixer.music.stop()
+            try:
+                os.unlink(tmp)
+            except OSError:
+                pass
 
         print(f"{G}[Speaking] Done.{X}\n")
         self._set_state("idle")
@@ -345,17 +421,21 @@ class ToroAssistant:
     def run(self):
         self.running = True
         while self.running:
-            if self.state == "idle":
-                # listen_in_background opens/closes the mic itself — no context needed
-                self._idle()
-            elif self.state in ("recording", "speaking"):
-                # Explicit mic context for capturing the request / stop-word
-                with self.mic as src:
-                    self.rec.adjust_for_ambient_noise(src, duration=0.3)
-                    if   self.state == "recording": self._record(src)
-                    elif self.state == "speaking":  self._speak(src)
-            elif self.state == "processing":
-                self._process()
+            try:
+                if self.state == "idle":
+                    # listen_in_background opens/closes the mic itself — no context needed
+                    self._idle()
+                elif self.state in ("recording", "speaking"):
+                    # Explicit mic context for capturing the request / stop-word
+                    with self.mic as src:
+                        self.rec.adjust_for_ambient_noise(src, duration=0.3)
+                        if   self.state == "recording": self._record(src)
+                        elif self.state == "speaking":  self._speak(src)
+                elif self.state == "processing":
+                    self._process()
+            except Exception as e:
+                print(f"{R}[Loop error] {e} — resetting to idle{X}")
+                self._set_state("idle")
 
     def stop(self):
         self.running = False

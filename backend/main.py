@@ -4,7 +4,7 @@ from fastapi.responses import Response
 from pydantic import BaseModel
 from typing import List, Optional, Dict
 from typing import List, Optional, Dict
-from datetime import datetime
+from datetime import datetime, timedelta
 import os
 import time
 import random
@@ -23,6 +23,7 @@ import base64
 import json
 import subprocess
 import signal
+import re
 from google.oauth2 import service_account
 from google.cloud import texttospeech
 
@@ -268,10 +269,109 @@ async def analyze_bull_bear(ticker: str):
 async def root():
     return {"message": "Toro API is running"}
 
+from ticker_bank import resolve_tickers
+
+_TICKER_EXCLUDE = {
+    'I', 'A', 'AI', 'US', 'USD', 'API', 'ETF', 'IPO', 'CEO', 'CFO', 'COO',
+    'PE', 'EPS', 'ROI', 'GDP', 'CPI', 'FED', 'SEC', 'NYSE', 'NASDAQ',
+    'AM', 'PM', 'OK', 'IT', 'OR', 'IF', 'IN', 'AT', 'BY', 'TO', 'ON',
+    'JP', 'EU', 'UK', 'CA', 'MY', 'ME', 'HE', 'SHE', 'THE', 'AND', 'FOR',
+    'ARE', 'NOT', 'BUT', 'ALL', 'ANY', 'CAN', 'HAS', 'HAD', 'ITS', 'LET',
+    'NEW', 'NOW', 'OLD', 'OWN', 'WAY', 'WHO', 'WHY', 'HOW', 'TOP',
+}
+
+def extract_tickers(message: str) -> List[str]:
+    return resolve_tickers(message, _TICKER_EXCLUDE)
+
+
+def fetch_finnhub_context(ticker: str, api_key: str) -> str:
+    """Fetch live Finnhub data for a ticker and return a formatted context block."""
+    base = "https://finnhub.io/api/v1"
+    parts = []
+
+    try:
+        r = requests.get(f"{base}/quote", params={"symbol": ticker, "token": api_key}, timeout=5)
+        if r.ok:
+            q = r.json()
+            if q.get("c"):
+                parts.append(
+                    f"Current Price: ${q['c']:.2f} | Change: {q.get('dp', 0):+.2f}% (${q.get('d', 0):+.2f})"
+                    f" | Open: ${q['o']:.2f} | High: ${q['h']:.2f} | Low: ${q['l']:.2f} | Prev Close: ${q['pc']:.2f}"
+                )
+    except Exception:
+        pass
+
+    try:
+        r = requests.get(f"{base}/stock/profile2", params={"symbol": ticker, "token": api_key}, timeout=5)
+        if r.ok:
+            p = r.json()
+            if p.get("name"):
+                parts.append(
+                    f"Company: {p['name']} | Industry: {p.get('finnhubIndustry', 'N/A')}"
+                    f" | Market Cap: ${p.get('marketCapitalization', 0):,.0f}M | Exchange: {p.get('exchange', 'N/A')}"
+                )
+    except Exception:
+        pass
+
+    try:
+        r = requests.get(f"{base}/stock/metric", params={"symbol": ticker, "metric": "all", "token": api_key}, timeout=5)
+        if r.ok:
+            m = r.json().get("metric", {})
+            metrics = []
+            if m.get("peBasicExclExtraTTM"):
+                metrics.append(f"P/E (TTM): {m['peBasicExclExtraTTM']:.1f}")
+            if m.get("52WeekHigh"):
+                metrics.append(f"52W High: ${m['52WeekHigh']:.2f}")
+            if m.get("52WeekLow"):
+                metrics.append(f"52W Low: ${m['52WeekLow']:.2f}")
+            if m.get("epsBasicExclExtraItemsTTM"):
+                metrics.append(f"EPS (TTM): ${m['epsBasicExclExtraItemsTTM']:.2f}")
+            if m.get("revenueGrowthTTMYoy"):
+                metrics.append(f"Revenue Growth YoY: {m['revenueGrowthTTMYoy']:.1f}%")
+            if m.get("netMarginTTM"):
+                metrics.append(f"Net Margin: {m['netMarginTTM']:.1f}%")
+            if m.get("roeTTM"):
+                metrics.append(f"ROE: {m['roeTTM']:.1f}%")
+            if m.get("currentRatioQuarterly"):
+                metrics.append(f"Current Ratio: {m['currentRatioQuarterly']:.2f}")
+            if metrics:
+                parts.append(" | ".join(metrics))
+    except Exception:
+        pass
+
+    try:
+        from_date = (datetime.now() - timedelta(days=3)).strftime("%Y-%m-%d")
+        to_date = datetime.now().strftime("%Y-%m-%d")
+        r = requests.get(
+            f"{base}/company-news",
+            params={"symbol": ticker, "from": from_date, "to": to_date, "token": api_key},
+            timeout=5
+        )
+        if r.ok:
+            headlines = [item["headline"] for item in r.json()[:5] if item.get("headline")]
+            if headlines:
+                parts.append("Recent News Headlines:\n" + "\n".join(f"- {h}" for h in headlines))
+    except Exception:
+        pass
+
+    if not parts:
+        return ""
+    return f"\n\n[Live Finnhub Data for {ticker}]\n" + "\n".join(parts) + "\n[End Finnhub Data]"
+
+
 @app.post("/agent/chat", response_model=ChatResponse)
 async def agent_chat(req: ChatRequest) -> ChatResponse:
     try:
-        result = agent.chat(message=req.message, session_id=req.session_id)
+        message = req.message
+        finnhub_key = os.getenv("FINNHUB_API_KEY")
+        if finnhub_key:
+            tickers = extract_tickers(message)
+            if tickers:
+                context_blocks = [fetch_finnhub_context(t, finnhub_key) for t in tickers]
+                context = "".join(b for b in context_blocks if b)
+                if context:
+                    message = message + context
+        result = agent.chat(message=message, session_id=req.session_id)
         return ChatResponse(session_id=result["session_id"], reply=result["reply"])
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -730,7 +830,7 @@ async def generate_ai_insights(tracked_stocks: List[str], stock_data: List[Dict]
 
         # Generate AI insights
         try:
-            response = gemini_client.models.generate_content(model='gemini-1.5-flash', contents=prompt)
+            response = gemini_client.models.generate_content(model='gemini-2.5-flash', contents=prompt)
             insights = response.text.strip()
         except Exception as e:
             print(f"Gemini API error: {e}")

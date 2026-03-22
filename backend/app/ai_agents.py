@@ -125,7 +125,7 @@ async def run_security_agent(raw_data: str) -> CleanData:
     try:
         prompt = f"{SECURITY_AGENT_PROMPT}\n\nInput Data:\n{raw_data}"
 
-        response = gemini_client.models.generate_content(model='gemini-1.5-flash', contents=prompt)
+        response = gemini_client.models.generate_content(model='gemini-2.5-flash', contents=prompt)
         result_text = response.text.strip()
 
         # Extract JSON from response
@@ -180,7 +180,7 @@ async def run_bull_agent(clean_data: str) -> BullAnalysis:
     try:
         prompt = f"{BULL_AGENT_PROMPT}\n\nClean Data:\n{clean_data}"
 
-        response = gemini_client.models.generate_content(model='gemini-1.5-flash', contents=prompt)
+        response = gemini_client.models.generate_content(model='gemini-2.5-flash', contents=prompt)
         result_text = response.text.strip()
 
         # Extract JSON from response
@@ -237,7 +237,7 @@ async def run_bear_agent(clean_data: str) -> BearAnalysis:
     try:
         prompt = f"{BEAR_AGENT_PROMPT}\n\nClean Data:\n{clean_data}"
 
-        response = gemini_client.models.generate_content(model='gemini-1.5-flash', contents=prompt)
+        response = gemini_client.models.generate_content(model='gemini-2.5-flash', contents=prompt)
         result_text = response.text.strip()
 
         # Extract JSON from response
@@ -317,7 +317,7 @@ async def run_scoring_agent(
 
         prompt = f"{SCORING_AGENT_PROMPT}\n\nInput Data:\n{json.dumps(input_data, indent=2)}"
 
-        response = gemini_client.models.generate_content(model='gemini-1.5-flash', contents=prompt)
+        response = gemini_client.models.generate_content(model='gemini-2.5-flash', contents=prompt)
         result_text = response.text.strip()
 
         # Extract JSON from response

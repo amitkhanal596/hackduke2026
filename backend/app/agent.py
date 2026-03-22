@@ -42,7 +42,7 @@ class WealthVisorAgent:
 
         final_key = google_key or gemini_key
         if final_key:
-            model = os.getenv("GEMINI_MODEL", "gemini-1.5-flash")
+            model = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
             print(f"[Agent Debug] Using Gemini with model: {model}")
             return "gemini", model
         print("[Agent Debug] No API key found, using mock")
@@ -147,7 +147,7 @@ class WealthVisorAgent:
                     messages.append({"role": role, "parts": [m["content"]]})
 
                 response = self.client.models.generate_content(
-                    model="gemini-1.5-flash",
+                    model=self.model,
                     contents=messages,
                     config={"temperature": 0.2}
                 )
