@@ -10,4 +10,4 @@ frontend/.env.local
 *.env
 *venv
 backend/venv*
-backend/__pycache__/ticker_bank.cpython-313.pyc
+backend/__pycache__*
