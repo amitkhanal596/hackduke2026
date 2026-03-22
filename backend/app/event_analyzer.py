@@ -15,6 +15,10 @@ class EventAnalyzer:
         self.cache_duration = timedelta(minutes=15)  # Cache for 15 minutes
         self.alpha_vantage_key = alpha_vantage_key or os.getenv("ALPHA_VANTAGE_KEY")
 
+    def _format_earnings_label(self, event_date: datetime) -> str:
+        quarter = ((event_date.month - 1) // 3) + 1
+        return f"Q{quarter} {event_date.year} Earnings"
+
     def _download_from_alpha_vantage(self, ticker: str) -> pd.DataFrame:
         """Download historical data from Alpha Vantage (more reliable than yfinance)"""
         if not self.alpha_vantage_key or self.alpha_vantage_key == "your_alphavantage_key_here":
@@ -206,16 +210,12 @@ class EventAnalyzer:
 
             # Analyze quarterly events (approximately every 90 days)
             # This simulates earnings dates which typically occur quarterly
-            quarters = [
-                (45, "Q4 2024"),   # ~45 days ago
-                (135, "Q3 2024"),  # ~135 days ago (3 months)
-                (225, "Q2 2024"),  # ~225 days ago (6 months)
-                (315, "Q1 2024"),  # ~315 days ago (9 months)
-            ]
+            quarter_offsets = [45, 135, 225, 315]
 
             events = []
-            for days_ago, quarter_label in quarters:
+            for days_ago in quarter_offsets:
                 event_date = datetime.now() - timedelta(days=days_ago)
+                quarter_label = self._format_earnings_label(event_date)
 
                 # Check if we have data for this date (handle timezone)
                 first_date = stock_data.index[0]
@@ -230,7 +230,7 @@ class EventAnalyzer:
                 try:
                     # Analyze this event using REAL price data and CAR calculation
                     analysis = self.analyze_event(ticker, event_date)
-                    analysis["event"] = f"{quarter_label} Earnings"
+                    analysis["event"] = quarter_label
                     events.append(analysis)
                     print(f"  [OK] Analyzed {quarter_label} for {ticker}: CAR = {analysis['car_0_1']}%")
                 except Exception as e:
@@ -325,13 +325,11 @@ class EventAnalyzer:
         random.seed(seed)
 
         events = []
-        quarters = [
-            (45, "Q4 2024"),
-            (135, "Q3 2024"),
-            (225, "Q2 2024"),
-        ]
+        quarter_offsets = [45, 135, 225]
 
-        for days_ago, quarter in quarters:
+        for days_ago in quarter_offsets:
+            event_date = datetime.now() - timedelta(days=days_ago)
+            quarter_label = self._format_earnings_label(event_date)
             # Generate realistic CAR values (-8% to +8%)
             car = round(random.uniform(-8, 8), 2)
 
@@ -351,8 +349,8 @@ class EventAnalyzer:
 
             events.append({
                 "ticker": ticker,
-                "event": f"{quarter} Earnings",
-                "date": (datetime.now() - timedelta(days=days_ago)).isoformat(),
+                "event": quarter_label,
+                "date": event_date.isoformat(),
                 "car_0_1": car,
                 "volatility_change": volatility,
                 "sentiment": sentiment,

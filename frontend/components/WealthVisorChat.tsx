@@ -1,7 +1,9 @@
 "use client";
 
 import { useRef, useState, useEffect } from "react";
-import { Send, Bot, User, X, MessageSquare, Maximize2, Minimize2, Move } from "lucide-react";
+import { Send, Bot, User, X, MessageSquare, Maximize2, Minimize2 } from "lucide-react";
+import ReactMarkdown from "react-markdown";
+import api from "@/lib/api";
 
 type ChatMessage = {
   id: string;
@@ -80,36 +82,25 @@ export default function WealthVisorChat({ hideButton = false }: WealthVisorChatP
     setIsSending(true);
 
     try {
-      const response = await fetch("/api/chat", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
+      const response = await api.post<{ session_id: string; reply: string }>("/agent/chat", {
           message: trimmed,
           session_id: sessionIdRef.current,
-        }),
       });
-
-      if (!response.ok) {
-        throw new Error("Failed to get response");
-      }
-
-      const data = await response.json();
-      sessionIdRef.current = data.session_id;
+      sessionIdRef.current = response.data.session_id;
 
       const assistantMessage: ChatMessage = {
         id: crypto.randomUUID(),
         role: "assistant",
-        content: data.reply,
+        content: response.data.reply,
       };
 
       setMessages((prev) => [...prev, assistantMessage]);
-    } catch (e) {
+    } catch (e: any) {
+      const errorMessage = e?.response?.data?.detail || e?.message || "Unknown error occurred";
       const assistantMessage: ChatMessage = {
         id: crypto.randomUUID(),
         role: "assistant",
-        content: "Sorry, I couldn't process your request. Please try again.",
+        content: `Sorry, I couldn't process your request. Error: ${errorMessage}`,
       };
       setMessages((prev) => [...prev, assistantMessage]);
     } finally {
@@ -280,12 +271,24 @@ export default function WealthVisorChat({ hideButton = false }: WealthVisorChatP
                     : "bg-gradient-to-br from-emerald-500 to-emerald-600 text-white border border-emerald-400/50"
                 }`}
               >
-                <div
-                  className="whitespace-pre-wrap [&_strong]:font-bold [&_strong]:text-emerald-300"
-                  dangerouslySetInnerHTML={{
-                    __html: m.content.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
-                  }}
-                />
+                {m.role === "assistant" ? (
+                  <div className="prose prose-invert prose-sm max-w-none">
+                    <ReactMarkdown
+                      components={{
+                        p: ({ children }) => <p className="mb-2 last:mb-0 whitespace-pre-wrap">{children}</p>,
+                        ul: ({ children }) => <ul className="mb-2 ml-4 list-disc">{children}</ul>,
+                        ol: ({ children }) => <ol className="mb-2 ml-4 list-decimal">{children}</ol>,
+                        li: ({ children }) => <li className="mb-1">{children}</li>,
+                        strong: ({ children }) => <strong className="font-bold text-emerald-300">{children}</strong>,
+                        code: ({ children }) => <code className="bg-black/50 px-1 py-0.5 rounded text-xs">{children}</code>,
+                      }}
+                    >
+                      {m.content}
+                    </ReactMarkdown>
+                  </div>
+                ) : (
+                  <div className="whitespace-pre-wrap">{m.content}</div>
+                )}
               </div>
               {m.role === "user" && (
                 <div className="flex justify-center items-center bg-emerald-500/10 border border-emerald-500/30 rounded-lg w-10 h-10 flex-shrink-0 mt-1">

@@ -1,7 +1,11 @@
 import os
 import uuid
+import importlib
 from typing import Dict, List, Optional, Tuple
 from pathlib import Path
+
+AIMessage = HumanMessage = SystemMessage = None
+ChatGoogleGenerativeAI = None
 
 
 class WealthVisorAgent:
@@ -16,13 +20,14 @@ class WealthVisorAgent:
     def __init__(self, system_prompt_path: Path, workspace_root: Optional[Path] = None):
         self.workspace_root = workspace_root or Path(__file__).resolve().parent.parent
         self.system_prompt_path = system_prompt_path
+        self.max_history_messages = int(os.getenv("CHAT_MAX_HISTORY_MESSAGES", "24"))
 
         # Conversation sessions: session_id -> List[{role, content}]
         self.sessions: Dict[str, List[Dict[str, str]]] = {}
 
         # Provider selection (Gemini-only)
         self.provider, self.model = self._detect_provider()
-        self.client = self._init_client()
+        self.llm = self._init_llm()
 
         # Load base system instructions
         self.base_system_prompt = self._load_system_prompt()
@@ -48,19 +53,45 @@ class WealthVisorAgent:
         print("[Agent Debug] No API key found, using mock")
         return "none", "mock"
 
-    def _init_client(self):
+    def _init_llm(self):
         if self.provider == "gemini":
             try:
-                import google.genai as genai  # type: ignore
                 api_key = os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY")
-                print(f"[Agent Debug] Configuring Gemini with API key: {api_key[:10]}...")
-                client = genai.Client(api_key=api_key)
-                print("[Agent Debug] Gemini client configured successfully")
-                return client
+                if not api_key:
+                    return None
+                if not self._load_langchain_deps():
+                    print("[Agent Debug] LangChain Gemini package not installed")
+                    return None
+                print(f"[Agent Debug] Configuring LangChain Gemini model: {self.model}")
+                llm = ChatGoogleGenerativeAI(
+                    model=self.model,
+                    google_api_key=api_key,
+                    temperature=0.2,
+                )
+                print("[Agent Debug] LangChain Gemini model configured successfully")
+                return llm
             except Exception as e:
-                print(f"[Agent Debug] Error initializing Gemini client: {e}")
+                print(f"[Agent Debug] Error initializing LangChain Gemini model: {e}")
                 return None
         return None
+
+    def _load_langchain_deps(self) -> bool:
+        global AIMessage, HumanMessage, SystemMessage, ChatGoogleGenerativeAI
+
+        if all([AIMessage, HumanMessage, SystemMessage, ChatGoogleGenerativeAI]):
+            return True
+
+        try:
+            messages_module = importlib.import_module("langchain_core.messages")
+            google_genai_module = importlib.import_module("langchain_google_genai")
+
+            AIMessage = getattr(messages_module, "AIMessage")
+            HumanMessage = getattr(messages_module, "HumanMessage")
+            SystemMessage = getattr(messages_module, "SystemMessage")
+            ChatGoogleGenerativeAI = getattr(google_genai_module, "ChatGoogleGenerativeAI")
+            return True
+        except Exception:
+            return False
 
     def _load_system_prompt(self) -> str:
         try:
@@ -109,12 +140,27 @@ class WealthVisorAgent:
             return session_id
         new_id = session_id or str(uuid.uuid4())
         if new_id not in self.sessions:
-            system_message = {
-                "role": "system",
-                "content": self.base_system_prompt + (self.extra_context or ""),
-            }
-            self.sessions[new_id] = [system_message]
+            self.sessions[new_id] = []
         return new_id
+
+    def _system_prompt(self) -> str:
+        return self.base_system_prompt + (self.extra_context or "")
+
+    def _trim_history(self, history: List[Dict[str, str]]) -> List[Dict[str, str]]:
+        if len(history) <= self.max_history_messages:
+            return history
+        return history[-self.max_history_messages :]
+
+    def _to_langchain_messages(self, history: List[Dict[str, str]]):
+        if not all([SystemMessage, HumanMessage, AIMessage]):
+            return []
+        messages = [SystemMessage(content=self._system_prompt())]
+        for msg in history:
+            if msg["role"] == "user":
+                messages.append(HumanMessage(content=msg["content"]))
+            elif msg["role"] == "assistant":
+                messages.append(AIMessage(content=msg["content"]))
+        return messages
 
     def chat(self, message: str, session_id: Optional[str] = None) -> Dict[str, str]:
         """
@@ -123,35 +169,23 @@ class WealthVisorAgent:
         sid = self._get_or_create_session(session_id)
         history = self.sessions[sid]
         history.append({"role": "user", "content": message})
+        history = self._trim_history(history)
+        self.sessions[sid] = history
 
         reply_text = self._generate_reply(history)
         history.append({"role": "assistant", "content": reply_text})
+        self.sessions[sid] = self._trim_history(history)
         return {"session_id": sid, "reply": reply_text}
 
     def _generate_reply(self, history: List[Dict[str, str]]) -> str:
-        if self.provider == "gemini" and self.client is not None:
+        if self.provider == "gemini" and self.llm is not None:
             try:
-                # Prepare system instruction and convert history to Gemini roles
-                system_msg = next((m["content"] for m in history if m["role"] == "system"), "")
-                convo = [m for m in history if m["role"] != "system"]
-
-                # Combine system message into first user message
-                messages = []
-                if convo and system_msg:
-                    first_user_content = f"{system_msg}\n\nUser: {convo[0]['content']}"
-                    messages.append({"role": "user", "parts": [first_user_content]})
-                    convo = convo[1:]  # Skip first message since we included it
-
-                for m in convo:
-                    role = "user" if m["role"] == "user" else "model"
-                    messages.append({"role": role, "parts": [m["content"]]})
-
-                response = self.client.models.generate_content(
-                    model=self.model,
-                    contents=messages,
-                    config={"temperature": 0.2}
-                )
-                return getattr(response, "text", "") or ""
+                messages = self._to_langchain_messages(history)
+                response = self.llm.invoke(messages)
+                content = getattr(response, "content", "")
+                if isinstance(content, str):
+                    return content
+                return str(content)
             except Exception as e:
                 return f"Sorry, I had trouble contacting the model: {e}"
 

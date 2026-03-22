@@ -1,0 +1,6 @@
+# Backend dependencies for Toro API
+# Existing project may include additional packages installed in environment.
+# LangChain chat unification dependencies:
+langchain>=0.3.0
+langchain-core>=0.3.0
+langchain-google-genai>=2.0.0
